@@ -105,7 +105,12 @@ def process_race_session(
     )
 
     # 6. Extract non-future features
-    weather_df = session.weather_data if hasattr(session, "weather_data") else None
+    weather_df = None
+    try:
+        weather_df = session.weather_data
+    except Exception:
+        weather_df = None
+
     feature_df = extract_race_features(
         pairs_df=retention_df,
         laps_df=norm_laps,
