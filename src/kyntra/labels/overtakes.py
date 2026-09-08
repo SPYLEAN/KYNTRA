@@ -220,39 +220,82 @@ def detect_race_overtakes(
                             })
                             continue
 
-                        # Inspect sector timing evidence
-                        s1_a = next_t_rows[a].get("Sector1SessionTime")
-                        s1_b = next_t_rows[b].get("Sector1SessionTime")
-                        s2_a = next_t_rows[a].get("Sector2SessionTime")
-                        s2_b = next_t_rows[b].get("Sector2SessionTime")
+                        # Helper for timedelta / float to seconds
+                        def _to_sec(v):
+                            if pd.isna(v):
+                                return None
+                            return v.total_seconds() if hasattr(v, "total_seconds") else float(v)
 
-                        a_ahead_s1 = False
-                        a_ahead_s2 = False
+                        # Validate lap times and check for missing timestamps
+                        lap_time_a = _to_sec(next_t_rows[a].get("LapTime"))
+                        lap_time_b = _to_sec(next_t_rows[b].get("LapTime"))
+                        t_start_a = _to_sec(t_rows.get(a, {}).get("Time"))
+                        t_start_b = _to_sec(t_rows.get(b, {}).get("Time"))
+                        t_fin_a = _to_sec(next_t_rows[a].get("Time"))
+                        t_fin_b = _to_sec(next_t_rows[b].get("Time"))
 
-                        if pd.notna(s1_a) and pd.notna(s1_b):
-                            try:
-                                d1 = (s1_a - s1_b).total_seconds() if hasattr(s1_a - s1_b, "total_seconds") else float(s1_a - s1_b)
-                                # Attacker crossed S1 before defender (by >= 0.05s and <= 15s)
-                                if -15.0 <= d1 <= -0.05:
-                                    a_ahead_s1 = True
-                            except Exception:
-                                pass
+                        if None in [lap_time_a, lap_time_b, t_start_a, t_start_b, t_fin_a, t_fin_b]:
+                            same_lap_rejected += 1
+                            rejected_events.append({
+                                "overtake_event_id": f"OT_SL_CAND_{event_id}_L{event_lap:03d}_{a}_{b}",
+                                "event_id": event_id,
+                                "lap": event_lap,
+                                "attacker": a,
+                                "defender": b,
+                                "reason": "MISSING_LAP_OR_LINE_TIMESTAMPS",
+                            })
+                            continue
 
-                        if pd.notna(s2_a) and pd.notna(s2_b):
-                            try:
-                                d2 = (s2_a - s2_b).total_seconds() if hasattr(s2_a - s2_b, "total_seconds") else float(s2_a - s2_b)
-                                if -15.0 <= d2 <= -0.05:
-                                    a_ahead_s2 = True
-                            except Exception:
-                                pass
+                        # Resolve physical sector durations
+                        s1_dur_a = _to_sec(next_t_rows[a].get("Sector1Time"))
+                        s1_dur_b = _to_sec(next_t_rows[b].get("Sector1Time"))
+                        if s1_dur_a is None and pd.notna(next_t_rows[a].get("Sector1SessionTime")):
+                            s1_dur_a = _to_sec(next_t_rows[a].get("Sector1SessionTime")) - t_start_a
+                        if s1_dur_b is None and pd.notna(next_t_rows[b].get("Sector1SessionTime")):
+                            s1_dur_b = _to_sec(next_t_rows[b].get("Sector1SessionTime")) - t_start_b
 
-                        if a_ahead_s1 or a_ahead_s2:
+                        s2_dur_a = _to_sec(next_t_rows[a].get("Sector2Time"))
+                        s2_dur_b = _to_sec(next_t_rows[b].get("Sector2Time"))
+                        if s2_dur_a is None and pd.notna(next_t_rows[a].get("Sector2SessionTime")) and s1_dur_a is not None:
+                            s2_dur_a = _to_sec(next_t_rows[a].get("Sector2SessionTime")) - (t_start_a + s1_dur_a)
+                        if s2_dur_b is None and pd.notna(next_t_rows[b].get("Sector2SessionTime")) and s1_dur_b is not None:
+                            s2_dur_b = _to_sec(next_t_rows[b].get("Sector2SessionTime")) - (t_start_b + s1_dur_b)
+
+                        if s1_dur_a is None or s1_dur_b is None or s2_dur_a is None or s2_dur_b is None:
+                            same_lap_rejected += 1
+                            rejected_events.append({
+                                "overtake_event_id": f"OT_SL_CAND_{event_id}_L{event_lap:03d}_{a}_{b}",
+                                "event_id": event_id,
+                                "lap": event_lap,
+                                "attacker": a,
+                                "defender": b,
+                                "reason": "MISSING_SECTOR_TIMINGS",
+                            })
+                            continue
+
+                        # Compute true physical arrival times at Sector 1 and Sector 2
+                        p_s1_a = t_start_a + s1_dur_a
+                        p_s1_b = t_start_b + s1_dur_b
+                        p_s2_a = p_s1_a + s2_dur_a
+                        p_s2_b = p_s1_b + s2_dur_b
+
+                        d_start = t_start_a - t_start_b  # >0 means defender B started ahead of A
+                        d_s1 = p_s1_a - p_s1_b          # <0 means attacker A reached S1 ahead of B
+                        d_s2 = p_s2_a - p_s2_b          # <0 means attacker A reached S2 ahead of B
+                        d_fin = t_fin_a - t_fin_b        # >0 means defender B crossed finish line ahead of A
+
+                        # A genuine same-lap pass and re-pass requires an actual ordering inversion:
+                        # 1. Attacker started behind defender (d_start > 0.0)
+                        # 2. Attacker physically led at Sector 1 (d_s1 <= -0.05) OR Sector 2 (d_s2 <= -0.05)
+                        # 3. Defender repassed and crossed finish line ahead (d_fin > 0.0)
+                        a_ahead_s1 = (-15.0 <= d_s1 <= -0.05)
+                        a_ahead_s2 = (-15.0 <= d_s2 <= -0.05)
+                        defender_ahead_start = (d_start > 0.0)
+                        defender_ahead_finish = (d_fin > 0.0)
+
+                        if defender_ahead_start and defender_ahead_finish and (a_ahead_s1 or a_ahead_s2):
                             same_lap_verified += 1
-                            s_time = None
-                            if a_ahead_s1 and pd.notna(s1_a):
-                                s_time = float(s1_a.total_seconds()) if hasattr(s1_a, "total_seconds") else float(s1_a)
-                            elif pd.notna(s2_a):
-                                s_time = float(s2_a.total_seconds()) if hasattr(s2_a, "total_seconds") else float(s2_a)
+                            s_time = p_s1_a if a_ahead_s1 else p_s2_a
 
                             # 1. Attacker passes defender in Sector 1 or 2
                             sl_ot = OvertakeEvent(

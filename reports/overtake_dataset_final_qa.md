@@ -1,7 +1,7 @@
 # KYNTRA Phase 2A — Final Dataset QA Audit Report
 
 > **Dataset Audited:** `data/processed/kyntra_overtake_dataset.parquet`  
-> **Audit Timestamp:** 2026-09-08 10:43:56 UTC  
+> **Audit Timestamp:** 2026-09-08 12:00:13 UTC  
 > **Runtime Environment:** Python 3.12 (Native Windows)  
 > **Governing Rule:** Strict Pre-ML Dataset Quality & Mathematical Integrity  
 > **Final Verdict:** **PASS — READY FOR COLAB EDA**
@@ -167,9 +167,9 @@ Positive Overtakes = Retained Position + Re-passed by Defender + Retention Censo
 ### Mathematical Partition Balance
 | Horizon | Positive Pass | Retained | Re-passed | Retention Censored | Sum of Components | Discrepancy | Status |
 |---|---|---|---|---|---|---|---|
-| **1 Lap** | `270` | `245` | `25` | `0` | `270` | `0` | **EXACT MATCH** |
-| **2 Laps** | `425` | `372` | `29` | `24` | `425` | `0` | **EXACT MATCH** |
-| **3 Laps** | `530` | `433` | `32` | `65` | `530` | `0` | **EXACT MATCH** |
+| **1 Lap** | `253` | `245` | `8` | `0` | `253` | `0` | **EXACT MATCH** |
+| **2 Laps** | `408` | `372` | `13` | `23` | `408` | `0` | **EXACT MATCH** |
+| **3 Laps** | `516` | `433` | `20` | `63` | `516` | `0` | **EXACT MATCH** |
 
 ### Impossible State Audits
 - **`retained == 1` AND `repassed == 1`**: `0` occurrences across all horizons.
@@ -178,110 +178,73 @@ Positive Overtakes = Retained Position + Re-passed by Defender + Retention Censo
 
 ---
 
-## 6. Same-Lap Event Audit (27 Verified Events)
+## 6. Same-Lap Event Audit & Ordering Reversal Validation
 
-Comprehensive audit of all 27 intra-lap pass and re-pass events detected through sector timing order inversions (`Sector1SessionTime`, `Sector2SessionTime`):
+| Event ID | Lap | Attacker | Defender | Order Lap Start | Order Sector 1 | Order Sector 2 | Order Finish | Order Next Lap | Verified Pass | Verified Repass | Verdict | Reason |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `2026_02_CHN` | 21 | `COL` | `BEA` | `BEA_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `BEA_AHEAD` | `BEA_AHEAD` | 1 | 1 | **VERIFIED** | `GENUINE_INVERSION_CONFIRMED` |
+| `2026_09_GBR` | 7 | `SAI` | `GAS` | `GAS_AHEAD` | `SAI_AHEAD` | `SAI_AHEAD` | `GAS_AHEAD` | `GAS_AHEAD` | 1 | 1 | **VERIFIED** | `GENUINE_INVERSION_CONFIRMED` |
+| `2026_09_GBR` | 8 | `SAI` | `GAS` | `GAS_AHEAD` | `SAI_AHEAD` | `SAI_AHEAD` | `GAS_AHEAD` | `GAS_AHEAD` | 1 | 1 | **VERIFIED** | `GENUINE_INVERSION_CONFIRMED` |
+| `2026_09_GBR` | 29 | `HAM` | `RUS` | `RUS_AHEAD` | `RUS_AHEAD` | `HAM_AHEAD` | `RUS_AHEAD` | `RUS_AHEAD` | 1 | 1 | **VERIFIED** | `GENUINE_INVERSION_CONFIRMED` |
+| `2026_10_BEL` | 8 | `COL` | `NOR` | `NOR_AHEAD` | `NOR_AHEAD` | `NOR_AHEAD` | `NOR_AHEAD` | `NOR_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 4 | `SAI` | `BOT` | `BOT_AHEAD` | `BOT_AHEAD` | `SAI_AHEAD` | `BOT_AHEAD` | `BOT_AHEAD` | 0 | 0 | **REJECTED** | `NEUTRALIZATION_AND_MISSING_LAP_TIMES` |
+| `2026_12_NLD` | 5 | `SAI` | `PER` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 6 | `SAI` | `PER` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 7 | `SAI` | `PER` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | `PER_AHEAD` | `SAI_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 23 | `SAI` | `LIN` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 24 | `SAI` | `GAS` | `GAS_AHEAD` | `SAI_AHEAD` | `GAS_AHEAD` | `GAS_AHEAD` | `GAS_AHEAD` | 1 | 1 | **VERIFIED** | `GENUINE_INVERSION_CONFIRMED` |
+| `2026_12_NLD` | 25 | `SAI` | `GAS` | `GAS_AHEAD` | `GAS_AHEAD` | `GAS_AHEAD` | `GAS_AHEAD` | `GAS_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 26 | `SAI` | `HUL` | `HUL_AHEAD` | `HUL_AHEAD` | `HUL_AHEAD` | `HUL_AHEAD` | `HUL_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 28 | `SAI` | `LIN` | `LIN_AHEAD` | `SAI_AHEAD` | `SAI_AHEAD` | `LIN_AHEAD` | `SAI_AHEAD` | 1 | 1 | **VERIFIED** | `GENUINE_INVERSION_CONFIRMED` |
+| `2026_12_NLD` | 36 | `SAI` | `COL` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 37 | `SAI` | `COL` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 42 | `SAI` | `LIN` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 43 | `SAI` | `LIN` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | `LIN_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 44 | `SAI` | `OCO` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 45 | `SAI` | `OCO` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 46 | `SAI` | `OCO` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 47 | `SAI` | `OCO` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | `OCO_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 60 | `SAI` | `ALB` | `ALB_AHEAD` | `ALB_AHEAD` | `ALB_AHEAD` | `ALB_AHEAD` | `ALB_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 61 | `SAI` | `ALB` | `ALB_AHEAD` | `ALB_AHEAD` | `ALB_AHEAD` | `ALB_AHEAD` | `ALB_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 62 | `SAI` | `COL` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 63 | `SAI` | `COL` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
+| `2026_12_NLD` | 64 | `SAI` | `COL` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | `COL_AHEAD` | 0 | 0 | **REJECTED** | `NO_PHYSICAL_INVERSION_SECTOR_TIMESTAMP_ARTIFACT` |
 
-| Event ID | Event Name | Lap | Attacker | Defender | Pre-Pos | Post-Pos | Method | Conf | Event ID String |
-|---|---|---|---|---|---|---|---|---|---|
-| `2026_02_CHN` | Chinese Grand Prix | 21 | `COL` | `BEA` | P6 | P5 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_02_CHN_L021_COL_BEA` |
-| `2026_09_GBR` | British Grand Prix | 7 | `SAI` | `GAS` | P12 | P11 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_09_GBR_L007_SAI_GAS` |
-| `2026_09_GBR` | British Grand Prix | 8 | `SAI` | `GAS` | P12 | P11 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_09_GBR_L008_SAI_GAS` |
-| `2026_09_GBR` | British Grand Prix | 29 | `HAM` | `RUS` | P6 | P5 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_09_GBR_L029_HAM_RUS` |
-| `2026_10_BEL` | Belgian Grand Prix | 8 | `COL` | `NOR` | P9 | P8 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_10_BEL_L008_COL_NOR` |
-| `2026_12_NLD` | Dutch Grand Prix | 6 | `SAI` | `PER` | P20 | P19 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L006_SAI_PER` |
-| `2026_12_NLD` | Dutch Grand Prix | 7 | `SAI` | `PER` | P19 | P18 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L007_SAI_PER` |
-| `2026_12_NLD` | Dutch Grand Prix | 23 | `SAI` | `LIN` | P11 | P10 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L023_SAI_LIN` |
-| `2026_12_NLD` | Dutch Grand Prix | 24 | `SAI` | `GAS` | P12 | P11 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L024_SAI_GAS` |
-| `2026_12_NLD` | Dutch Grand Prix | 25 | `SAI` | `GAS` | P12 | P11 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L025_SAI_GAS` |
-| `2026_12_NLD` | Dutch Grand Prix | 26 | `SAI` | `HUL` | P13 | P12 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L026_SAI_HUL` |
-| `2026_12_NLD` | Dutch Grand Prix | 28 | `SAI` | `LIN` | P11 | P10 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L028_SAI_LIN` |
-| `2026_12_NLD` | Dutch Grand Prix | 36 | `SAI` | `COL` | P18 | P17 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L036_SAI_COL` |
-| `2026_12_NLD` | Dutch Grand Prix | 37 | `SAI` | `COL` | P17 | P16 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L037_SAI_COL` |
-| `2026_12_NLD` | Dutch Grand Prix | 42 | `SAI` | `LIN` | P15 | P14 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L042_SAI_LIN` |
-| `2026_12_NLD` | Dutch Grand Prix | 43 | `SAI` | `LIN` | P15 | P14 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L043_SAI_LIN` |
-| `2026_12_NLD` | Dutch Grand Prix | 44 | `SAI` | `OCO` | P16 | P15 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L044_SAI_OCO` |
-| `2026_12_NLD` | Dutch Grand Prix | 45 | `SAI` | `OCO` | P16 | P15 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L045_SAI_OCO` |
-| `2026_12_NLD` | Dutch Grand Prix | 46 | `SAI` | `OCO` | P16 | P15 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L046_SAI_OCO` |
-| `2026_12_NLD` | Dutch Grand Prix | 47 | `SAI` | `OCO` | P16 | P15 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L047_SAI_OCO` |
-| `2026_12_NLD` | Dutch Grand Prix | 60 | `SAI` | `ALB` | P15 | P14 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L060_SAI_ALB` |
-| `2026_12_NLD` | Dutch Grand Prix | 61 | `SAI` | `ALB` | P15 | P14 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L061_SAI_ALB` |
-| `2026_12_NLD` | Dutch Grand Prix | 62 | `SAI` | `COL` | P16 | P15 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L062_SAI_COL` |
-| `2026_12_NLD` | Dutch Grand Prix | 63 | `SAI` | `COL` | P16 | P15 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L063_SAI_COL` |
-| `2026_12_NLD` | Dutch Grand Prix | 64 | `SAI` | `COL` | P16 | P15 | `SECTOR_TIMING_ORDER_TRANSITION` | 0.90 | `OT_SL_2026_12_NLD_L064_SAI_COL` |
+### Targeted Inspection of Suspicious Repeated Clusters
 
-### Detailed Consistency Audit on 10 Sampled Same-Lap Events
-Random seed: 42. Verified against underlying lap sector records:
+1. **`2026_12_NLD` laps 44-47 (SAI vs OCO):**
+   - **Start & Finish Order**: OCO was ahead at lap start, sector 1, sector 2, and finish on every single lap (L44: +0.070s start, +0.969s S1, +1.116s S2, +1.145s finish; L45: +1.145s start, +1.009s S1, +0.998s S2, +1.019s finish; L46: +1.019s start, +1.022s S1, +0.354s S2, +0.197s finish; L47: +0.197s start, +1.076s S1, +2.484s S2, +3.152s finish).
+   - **Root Cause**: FastF1 telemetry in Dutch GP contained an unaligned +1.597s session timestamp offset in OCO's raw `Sector1SessionTime`, making `(s1_a - s1_b)` negative in raw session time despite OCO being physically 0.969s ahead on track.
+   - **Audit Verdict**: **REJECTED (4 false detections removed)**.
 
-1. **`OT_SL_2026_12_NLD_L060_SAI_ALB`** (Dutch Grand Prix, Lap 60):
-   - **Chasing Dynamic**: Car `SAI` (P15) actively contested Car `ALB` (P14).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `SAI` reached sector boundary before `ALB`.
-   - **Lap-End Re-pass Order**: Car `ALB` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
+2. **`2026_12_NLD` laps 60-61 (SAI vs ALB):**
+   - **Physical Timeline**: ALB remained physically ahead across all timing sectors on both laps (L60: +0.094s start, +0.500s S1, +0.810s S2, +1.048s finish; L61: +1.048s start, +1.075s S1, +1.172s S2, +1.101s finish).
+   - **Audit Verdict**: **REJECTED (2 false detections removed)**.
 
-2. **`OT_SL_2026_09_GBR_L029_HAM_RUS`** (British Grand Prix, Lap 29):
-   - **Chasing Dynamic**: Car `HAM` (P6) actively contested Car `RUS` (P5).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `HAM` reached sector boundary before `RUS`.
-   - **Lap-End Re-pass Order**: Car `RUS` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
+3. **`2026_12_NLD` laps 62-66 (SAI vs COL):**
+   - **Physical Timeline**: COL remained physically ahead across all timing sectors (L62: +0.338s start, +0.625s S1, +0.536s S2, +0.439s finish; L63: +0.439s start, +0.826s S1, +0.920s S2, +0.115s finish; L64: +0.115s start, +0.307s S2, +0.598s finish).
+   - **Audit Verdict**: **REJECTED (3 false detections removed)**.
 
-3. **`OT_SL_2026_02_CHN_L021_COL_BEA`** (Chinese Grand Prix, Lap 21):
-   - **Chasing Dynamic**: Car `COL` (P6) actively contested Car `BEA` (P5).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `COL` reached sector boundary before `BEA`.
-   - **Lap-End Re-pass Order**: Car `BEA` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
+4. **`2026_12_NLD` laps 23, 28, 42, 43 (SAI vs LIN):**
+   - **L23, L42, L43**: LIN remained physically ahead through all sectors (L23: +0.282s start, +0.273s S1, +0.514s S2, +0.398s finish; L42: +1.223s start, +1.155s S1, +1.116s S2, +1.270s finish; L43: +1.270s start, +1.391s S1, +1.090s S2, +1.290s finish).
+   - **L28**: Genuine physical inversion confirmed. LIN led at start (+0.096s), SAI took the lead in S1 (-0.144s) and S2 (-0.031s), and LIN counter-attacked to cross the finish line ahead (+0.188s).
+   - **Audit Verdict**: **L28 VERIFIED; L23, L42, L43 REJECTED (3 false detections removed)**.
 
-4. **`OT_SL_2026_12_NLD_L024_SAI_GAS`** (Dutch Grand Prix, Lap 24):
-   - **Chasing Dynamic**: Car `SAI` (P12) actively contested Car `GAS` (P11).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `SAI` reached sector boundary before `GAS`.
-   - **Lap-End Re-pass Order**: Car `GAS` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
+5. **`2026_09_GBR` laps 7/8 (SAI vs GAS):**
+   - **L7**: Genuine physical inversion confirmed. GAS led at start (+0.527s), SAI passed in S1 (-0.219s) and led S2 (-0.560s), GAS repassed in S3 to cross ahead (+0.626s).
+   - **L8**: Genuine physical inversion confirmed. GAS led at start (+0.626s), SAI passed in S1 (-0.121s) and led S2 (-0.476s), GAS repassed in S3 to cross ahead (+0.547s).
+   - **Deduplication Check**: Verified that the ordering genuinely reversed twice on each lap: GAS led start line -> SAI passed in S1/S2 -> GAS repassed across finish line.
+   - **Audit Verdict**: **BOTH VERIFIED GENUINE**.
 
-5. **`OT_SL_2026_12_NLD_L023_SAI_LIN`** (Dutch Grand Prix, Lap 23):
-   - **Chasing Dynamic**: Car `SAI` (P11) actively contested Car `LIN` (P10).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `SAI` reached sector boundary before `LIN`.
-   - **Lap-End Re-pass Order**: Car `LIN` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
-
-6. **`OT_SL_2026_12_NLD_L064_SAI_COL`** (Dutch Grand Prix, Lap 64):
-   - **Chasing Dynamic**: Car `SAI` (P16) actively contested Car `COL` (P15).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `SAI` reached sector boundary before `COL`.
-   - **Lap-End Re-pass Order**: Car `COL` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
-
-7. **`OT_SL_2026_10_BEL_L008_COL_NOR`** (Belgian Grand Prix, Lap 8):
-   - **Chasing Dynamic**: Car `COL` (P9) actively contested Car `NOR` (P8).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `COL` reached sector boundary before `NOR`.
-   - **Lap-End Re-pass Order**: Car `NOR` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
-
-8. **`OT_SL_2026_12_NLD_L063_SAI_COL`** (Dutch Grand Prix, Lap 63):
-   - **Chasing Dynamic**: Car `SAI` (P16) actively contested Car `COL` (P15).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `SAI` reached sector boundary before `COL`.
-   - **Lap-End Re-pass Order**: Car `COL` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
-
-9. **`OT_SL_2026_09_GBR_L008_SAI_GAS`** (British Grand Prix, Lap 8):
-   - **Chasing Dynamic**: Car `SAI` (P12) actively contested Car `GAS` (P11).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `SAI` reached sector boundary before `GAS`.
-   - **Lap-End Re-pass Order**: Car `GAS` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
-
-10. **`OT_SL_2026_12_NLD_L037_SAI_COL`** (Dutch Grand Prix, Lap 37):
-   - **Chasing Dynamic**: Car `SAI` (P17) actively contested Car `COL` (P16).
-   - **Sector Inversion Evidence**: `Sector1SessionTime` / `Sector2SessionTime` confirms `SAI` reached sector boundary before `COL`.
-   - **Lap-End Re-pass Order**: Car `COL` successfully counter-attacked and crossed the finish line ahead.
-   - **Durability Consistency**: `repassed_within_1_lap = 1`, `retained_position_1_lap = 0`.
-   - **Audit Finding**: **VERIFIED GENUINE** (Public timing order transition confirmed; no synthetic fabrication).
+### Recalculation Summary (Before vs After Detector Correction)
+- **Verified Same-Lap Candidates:** Was `27` -> Now **`6` unique pair events** (producing `8` verified same-lap overtakes across the championship).
+- **Rejected Candidate False Detections:** **`21` candidates rejected** (removed from verified event catalog).
+- **Total Dataset Observations:** `8,357` rows (strictly preserved).
+- **1-Lap Positive Labels:** Was `270` (3.23%) -> Now **`253` (3.03%)**.
+- **2-Lap Positive Labels:** Was `425` (5.09%) -> Now **`408` (4.88%)**.
+- **3-Lap Positive Labels:** Was `530` (6.34%) -> Now **`516` (6.17%)**.
+- **1-Lap Re-passed Labels:** Was `25` -> Now **`8`**.
+- **1-Lap Retained Position Labels:** **`245` (unchanged)**.
 
 ---
 
@@ -291,8 +254,8 @@ Audit verifying that every positive label resolves to an existing verified on-tr
 
 | Metric | Horizon 1 | Horizon 2 | Horizon 3 |
 |---|---|---|---|
-| **Positive Label Rows** | `270` | `425` | `530` |
-| **Unique Verified Overtake Events** | `276` | `276` | `276` |
+| **Positive Label Rows** | `253` | `408` | `516` |
+| **Unique Verified Overtake Events** | `259` | `259` | `259` |
 | **Unresolved Positive Labels** | **`0`** | **`0`** | **`0`** |
 
 - **Traceability Rate:** **100.00%**
@@ -309,12 +272,12 @@ Distribution of observations and positive overtakes across all completed 2026 ch
 | `2026_11_HUN` | Hungarian Grand Prix | **VALIDATION** | `1,153` | `13.8%` | `225` | `30` | `46` | `55` | `100` | `2.60%` |
 | `2026_06_MCO` | Monaco Grand Prix | **TRAIN** | `1,089` | `13.0%` | `93` | `4` | `6` | `7` | `67` | `0.37%` |
 | `2026_08_AUT` | Austrian Grand Prix | **TRAIN** | `1,046` | `12.5%` | `204` | `24` | `41` | `52` | `109` | `2.29%` |
-| `2026_12_NLD` | Dutch Grand Prix | **VALIDATION** | `1,007` | `12.0%` | `246` | `58` | `76` | `89` | `109` | `5.76%` |
+| `2026_12_NLD` | Dutch Grand Prix | **VALIDATION** | `1,007` | `12.0%` | `246` | `42` | `60` | `76` | `109` | `4.17%` |
 | `2026_05_CAN` | Canadian Grand Prix | **TRAIN** | `962` | `11.5%` | `177` | `30` | `50` | `66` | `86` | `3.12%` |
 | `2026_07_ESP` | Barcelona Grand Prix | **TRAIN** | `913` | `10.9%` | `200` | `21` | `36` | `49` | `108` | `2.30%` |
 | `2026_09_GBR` | British Grand Prix | **TRAIN** | `786` | `9.4%` | `181` | `25` | `44` | `55` | `88` | `3.18%` |
 | `2026_02_CHN` | Chinese Grand Prix | **TRAIN** | `755` | `9.0%` | `177` | `47` | `73` | `88` | `45` | `6.23%` |
-| `2026_10_BEL` | Belgian Grand Prix | **TRAIN** | `646` | `7.7%` | `153` | `31` | `53` | `69` | `63` | `4.80%` |
+| `2026_10_BEL` | Belgian Grand Prix | **TRAIN** | `646` | `7.7%` | `153` | `30` | `52` | `68` | `63` | `4.64%` |
 
 ### Circuit Dominance Evaluation
 - **Highest Observation Share:** Hungarian Grand Prix (1,153 rows, 13.8% of total dataset).
@@ -400,10 +363,19 @@ Audit of reserved demonstration and evaluation races:
 
 ## 12. Final QA Verdict
 
-| Total Checks Executed | Critical Defects Found | Non-Critical Warnings |
-|---|---|---|
-| **12 of 12** | **0** | **0** |
+| Total Checks Executed | Critical Defects Found | Defects Corrected & Regenerated | Status |
+|---|---|---|---|
+| **12 of 12** | **0 Remaining (1 Resolved)** | **YES (Fixed, Rebuilt & Verified)** | **ALL CHECKS PASSED** |
 
-# **PASS — READY FOR COLAB EDA**
+# **PASS — CORRECTED DATASET LOCKED, READY FOR COLAB EDA**
 
-The dataset [`data/processed/kyntra_overtake_dataset.parquet`](file:///c:/Users/tanvi/OneDrive/Documents/TRACKSHIFT%202026/KYNTRA/data/processed/kyntra_overtake_dataset.parquet) is fully verified, mathematically consistent, audit-traceable, and free of data leakage.
+### Defect Investigation & Final Resolution Summary
+1. **Defect Identified**: The initial same-lap detector compared raw session timestamps (`Sector1SessionTime`, `Sector2SessionTime`). In Round 12 (Dutch Grand Prix), FastF1 timing feeds had unaligned session offsets for several drivers (notably OCO, ALB, PER, COL), producing negative raw timestamp differences (`s1_a - s1_b < 0`) even though the defender was physically leading the attacker by up to ~1.0s at every physical sector boundary. This caused 21 false-positive same-lap pass/repass events across repeated laps (e.g. SAI vs OCO laps 44–47, SAI vs COL laps 62–66).
+2. **Detector Corrected**: Modified `detect_race_overtakes()` in `src/kyntra/labels/overtakes.py` to compute physical arrival times strictly as `LapStartSessionTime + SectorDuration` (`Sector1Time`, `Sector2Time`), enforcing a true physical ordering inversion (delta_s1 <= -0.05 or delta_s2 <= -0.05 while delta_start > 0 and delta_fin > 0).
+3. **Dataset Regenerated**: Rebuilt `data/processed/kyntra_overtake_dataset.parquet` (8,357 rows, 78 columns).
+4. **Label Consistency Confirmed**:
+   - 1-Lap Positives: 253 (3.03%) = 245 Retained + 8 Repassed + 0 Censored (Exact Match).
+   - 2-Lap Positives: 408 (4.88%) = 372 Retained + 13 Repassed + 23 Censored (Exact Match).
+   - 3-Lap Positives: 516 (6.17%) = 433 Retained + 20 Repassed + 63 Censored (Exact Match).
+   - Impossible States: 0 occurrences across all horizons.
+5. **Verification**: 61 of 61 unit tests passing under Python 3.12. Zero leakage fields. Full demo and auxiliary isolation intact. Dataset is frozen as the Phase 2A ML input.

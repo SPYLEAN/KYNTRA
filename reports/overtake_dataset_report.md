@@ -1,7 +1,7 @@
 # KYNTRA Phase 2A — Overtake Intelligence Dataset Quality Report
 
 > **Dataset Identifier:** `kyntra_overtake_dataset.parquet`  
-> **Generation Timestamp:** 2026-09-08 10:35:36 UTC  
+> **Generation Timestamp:** 2026-09-08 11:19:56 UTC  
 > **Label Engine Version:** `2.0.0`  
 > **Label Provenance Source:** `KYNTRA_VERIFIED_ON_TRACK_ENGINE`  
 > **Regulation Era:** `2026_ENERGY_OVERTAKE`
@@ -47,15 +47,15 @@
 ### Overall Overtake Label Distribution
 | Horizon | Positive Overtakes | Positive Rate | Censored Observations | Censoring Rate |
 |---|---|---|---|---|
-| **Next 1 Lap** | `270` | `3.23%` | `775` | `9.27%` |
-| **Next 2 Laps** | `425` | `5.09%` | `1,471` | `17.60%` |
-| **Next 3 Laps** | `530` | `6.34%` | `2,086` | `24.96%` |
+| **Next 1 Lap** | `253` | `3.03%` | `775` | `9.27%` |
+| **Next 2 Laps** | `408` | `4.88%` | `1,472` | `17.61%` |
+| **Next 3 Laps** | `516` | `6.17%` | `2,088` | `24.99%` |
 
 ### Positive Overtakes Per Split
 | Split | Total Observations | Positive (1 Lap) | Positive (2 Laps) | Positive (3 Laps) |
 |---|---|---|---|---|
-| **TRAIN** | `6,197` | `182` (2.94%) | `303` (4.89%) | `386` (6.23%) |
-| **VALIDATION** | `2,160` | `88` (4.07%) | `122` (5.65%) | `144` (6.67%) |
+| **TRAIN** | `6,197` | `181` (2.92%) | `302` (4.87%) | `385` (6.21%) |
+| **VALIDATION** | `2,160` | `72` (3.33%) | `106` (4.91%) | `131` (6.06%) |
 
 *Note: Subsequent re-passes do NOT erase original successful overtakes under event-based labeling.*
 
@@ -68,9 +68,9 @@ Retention is conditional on a verified successful pass: P(retained | pass)
 ### Overall Retention Metrics
 | Horizon | Retained Position | Re-passed by Defender | Retention Censored |
 |---|---|---|---|
-| **1 Lap Post-Pass** | `245` | `25` | `0` |
-| **2 Laps Post-Pass** | `372` | `29` | `24` |
-| **3 Laps Post-Pass** | `433` | `32` | `65` |
+| **1 Lap Post-Pass** | `245` | `8` | `0` |
+| **2 Laps Post-Pass** | `372` | `13` | `23` |
+| **3 Laps Post-Pass** | `433` | `20` | `63` |
 
 ### Positive Retention Examples Per Split
 | Split | Retained (1 Lap) | Retained (2 Laps) | Retained (3 Laps) |
@@ -85,22 +85,24 @@ Retention is conditional on a verified successful pass: P(retained | pass)
 | Metric | Count | Description |
 |---|---|---|
 | **Same-Lap Pass Candidates Discovered** | `8,694` | Close chase pairs evaluated on consecutive laps where lap-end order was unchanged |
-| **Same-Lap Pass Candidates Verified** | `27` | Verified passes supported by sector timing and/or telemetry order transitions |
-| **Same-Lap Candidates Rejected** | `8,667` | Insufficient public evidence / no timing inversion confirmed |
+| **Same-Lap Pass Candidates Verified** | `8` | Verified passes supported by sector timing and/or telemetry order transitions |
+| **Same-Lap Candidates Rejected** | `8,686` | Insufficient public evidence / no timing inversion confirmed |
 
 ---
 
 ## 6. False Overtake Inversion Rejections
 
-Total Non-Racing Position Inversions Rejected: `9,602`
+Total Non-Racing Position Inversions Rejected: `9,621`
 
 | Rejection Reason | Count | Explanation |
 |---|---|---|
-| `NO_SAME_LAP_INVERSION_EVIDENCE` | `8,007` | Filtered non-racing position gain |
+| `NO_SAME_LAP_INVERSION_EVIDENCE` | `8,006` | Filtered non-racing position gain |
 | `DEFENDER_PITTED` | `814` | Filtered non-racing position gain |
 | `PIT_DURING_SAME_LAP_CANDIDATE` | `660` | Filtered non-racing position gain |
 | `NEUTRALIZED_RACE_SC_VSC` | `109` | Filtered non-racing position gain |
+| `MISSING_LAP_OR_LINE_TIMESTAMPS` | `17` | Filtered non-racing position gain |
 | `ATTACKER_PITTED` | `11` | Filtered non-racing position gain |
+| `MISSING_SECTOR_TIMINGS` | `3` | Filtered non-racing position gain |
 | `DEFENDER_RETIRED` | `1` | Filtered non-racing position gain |
 
 ---
