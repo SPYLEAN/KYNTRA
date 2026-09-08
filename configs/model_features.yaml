@@ -1,0 +1,120 @@
+# KYNTRA Machine Learning Feature Catalog & Eligibility Schema
+# Defines feature eligibility for relative tactical dynamics model vs provenance metadata.
+# Driver and Team identities are strictly EXCLUDED from model training to prevent identity leakage.
+
+version: "1.0"
+target_families:
+  overtake_probability:
+    targets:
+      - "overtake_next_1_lap"
+      - "overtake_next_2_laps"
+      - "overtake_next_3_laps"
+    censoring_indicators:
+      - "censored_1_lap"
+      - "censored_2_laps"
+      - "censored_3_laps"
+  position_retention:
+    targets:
+      - "retained_position_1_lap"
+      - "retained_position_2_laps"
+      - "retained_position_3_laps"
+    repass_targets:
+      - "repassed_within_1_lap"
+      - "repassed_within_2_laps"
+      - "repassed_within_3_laps"
+    censoring_indicators:
+      - "retention_censored_1_lap"
+      - "retention_censored_2_laps"
+      - "retention_censored_3_laps"
+
+features:
+  # 1. Identifiers & Provenance (EXCLUDED from core model)
+  provenance_only:
+    eligible_for_model: false
+    reason: "Identity leakage prevention and audit metadata"
+    columns:
+      - "observation_id"
+      - "battle_sequence_id"
+      - "event_id"
+      - "race_id"
+      - "season"
+      - "event_name"
+      - "circuit"
+      - "split"
+      - "regulation_era"
+      - "session_time"
+      - "lap"
+      - "attacker"
+      - "defender"
+      - "attacker_team"
+      - "defender_team"
+      - "label_source"
+      - "label_version"
+      - "label_generated_at"
+      - "overtake_event_id"
+      - "overtake_event_lap"
+      - "overtake_event_time"
+      - "overtake_event_attacker"
+      - "overtake_event_defender"
+      - "overtake_verification_method"
+      - "overtake_confidence"
+      - "gap_source"
+      - "gap_confidence"
+
+  # 2. Relative Tactical Race State Features (ELIGIBLE for core model)
+  model_feature_eligible:
+    eligible_for_model: true
+    reason: "Relative dynamics observables available strictly at or before decision time t"
+    columns:
+      # Positions & Gaps
+      - "attacker_position"
+      - "defender_position"
+      - "distance_gap_m"
+      - "gap_seconds"
+      - "closing_rate"
+
+      # Relative Pace & Sectors
+      - "attacker_lap_time"
+      - "defender_lap_time"
+      - "recent_pace_delta_1lap"
+      - "recent_pace_delta_3laps"
+      - "sector1_delta"
+      - "sector2_delta"
+      - "sector3_delta"
+
+      # Speed Traps
+      - "attacker_speed_trap"
+      - "defender_speed_trap"
+      - "speed_trap_delta"
+
+      # Tyres & Stints
+      - "attacker_compound"
+      - "defender_compound"
+      - "attacker_tyre_age"
+      - "defender_tyre_age"
+      - "tyre_age_delta"
+      - "attacker_stint"
+      - "defender_stint"
+
+      # Race & Pit Context
+      - "attacker_pit_context"
+      - "defender_pit_context"
+      - "race_phase"
+      - "laps_remaining"
+
+      # Observable Dirty-Air Proxies V1
+      - "consecutive_laps_following"
+      - "consecutive_laps_close"
+      - "distance_gap_mean_recent"
+      - "distance_gap_std_recent"
+
+      # Threat from Behind
+      - "rear_distance_gap_m"
+      - "rear_threat_proxy"
+
+      # Weather & Track Status
+      - "track_status_raw"
+      - "track_status_parsed"
+      - "weather_air_temp"
+      - "weather_track_temp"
+      - "weather_rainfall"

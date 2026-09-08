@@ -1,0 +1,79 @@
+# KYNTRA 2026 Season Dataset Split Configuration
+# Strict event-level isolation. Zero row-level random splitting.
+# DEMO_HOLDOUT events are strictly isolated and must NEVER enter TRAIN, VALIDATION,
+# feature selection, threshold tuning, or probability calibration.
+
+version: "1.0"
+season: 2026
+governing_rule: "EVENT_LEVEL_STRICT_ISOLATION"
+
+splits:
+  DEMO_HOLDOUT:
+    description: "Reserved complete race events for tactical demonstration, replay validation, and interactive scenarios."
+    eligible_for_training: false
+    eligible_for_validation: false
+    events:
+      - round: 1
+        name: "Australian Grand Prix"
+        event_id: "2026_01_AUS"
+        circuit: "Albert Park Circuit, Melbourne"
+      - round: 3
+        name: "Japanese Grand Prix"
+        event_id: "2026_03_JPN"
+        circuit: "Suzuka International Racing Course"
+      - round: 4
+        name: "Miami Grand Prix"
+        event_id: "2026_04_MIA"
+        circuit: "Miami International Autodrome"
+      - round: 13
+        name: "Italian Grand Prix"
+        event_id: "2026_13_ITA"
+        circuit: "Autodromo Nazionale Monza"
+
+  VALIDATION:
+    description: "Independent complete race events reserved exclusively for model hyperparameter evaluation and threshold tuning."
+    eligible_for_training: false
+    eligible_for_validation: true
+    events:
+      - round: 11
+        name: "Hungarian Grand Prix"
+        event_id: "2026_11_HUN"
+        circuit: "Hungaroring, Mogyoród"
+      - round: 12
+        name: "Dutch Grand Prix"
+        event_id: "2026_12_NLD"
+        circuit: "Circuit Zandvoort"
+
+  TRAIN:
+    description: "Complete race events used for primary model training and relative dynamics feature learning."
+    eligible_for_training: true
+    eligible_for_validation: false
+    events:
+      - round: 2
+        name: "Chinese Grand Prix"
+        event_id: "2026_02_CHN"
+        circuit: "Shanghai International Circuit"
+      - round: 5
+        name: "Canadian Grand Prix"
+        event_id: "2026_05_CAN"
+        circuit: "Circuit Gilles Villeneuve, Montreal"
+      - round: 6
+        name: "Monaco Grand Prix"
+        event_id: "2026_06_MCO"
+        circuit: "Circuit de Monaco"
+      - round: 7
+        name: "Barcelona Grand Prix"
+        event_id: "2026_07_ESP"
+        circuit: "Circuit de Barcelona-Catalunya"
+      - round: 8
+        name: "Austrian Grand Prix"
+        event_id: "2026_08_AUT"
+        circuit: "Red Bull Ring, Spielberg"
+      - round: 9
+        name: "British Grand Prix"
+        event_id: "2026_09_GBR"
+        circuit: "Silverstone Circuit"
+      - round: 10
+        name: "Belgian Grand Prix"
+        event_id: "2026_10_BEL"
+        circuit: "Circuit de Spa-Francorchamps"

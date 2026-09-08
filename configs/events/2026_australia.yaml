@@ -1,0 +1,40 @@
+# 2026 Australian Grand Prix — Official FIA Event Configuration
+# Source: FIA Formula One Race Director Document 6 (Power Unit Information, 05 March 2026)
+
+event:
+  name: "Australian Grand Prix"
+  year: 2026
+  round: 1
+  circuit: "Albert Park Circuit, Melbourne"
+
+  provenance:
+    document: "2026 Australian Grand Prix - FIA Formula One Race Director Document 6"
+    title: "Power Unit Information"
+    publication_date: "2026-03-05"
+    issuer: "FIA Formula One Race Director"
+    source_status: "OFFICIAL_EVENT_DOCUMENT"
+
+  # Timing & Detection Lines (Document 6 Item 1)
+  detection_gap_seconds: 1.0
+
+  detection_line:
+    distance_m: 4650.0
+    loop: "L21"
+    # CRITICAL: Document 6 lists this loop as subject to circuit validation.
+    # We strictly preserve TBC_IN_FIA_DOCUMENT and NEVER convert to VERIFIED.
+    source_status: "TBC_IN_FIA_DOCUMENT"
+
+  activation_line:
+    distance_m: 4713.0
+    loop: "L22_SC1"
+    source_status: "VERIFIED"
+
+  # Event-specific Energy Store Recharge Limits (Document 6 Item 3)
+  race_recharge_limit_mj:
+    overtake_inactive: 8.0
+    overtake_active: 8.5
+
+  qualifying_recharge_limit_mj: 7.0
+
+  # Power reduction rate limit (Document 6 Item 4)
+  power_reduction_rate_limit_kw_per_s: 50.0

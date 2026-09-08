@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kyntra"
+version = "0.1.0"
+description = "KYNTRA — Predictive Racecraft Intelligence for Formula 1 tactical decision-support"
+readme = "README.md"
+# Runtime recommendation: Python 3.12 is recommended for KYNTRA ML & simulation stages.
+# Currently compatible with Python 3.10 through 3.14.
+requires-python = ">=3.10"
+authors = [
+    { name = "KYNTRA Engineering Team" }
+]
+dependencies = [
+    "fastf1>=3.3.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "pyarrow>=14.0.0",
+    "duckdb>=0.9.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra -q"

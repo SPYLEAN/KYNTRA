@@ -1,0 +1,70 @@
+# FIA 2026 Formula 1 Power Unit Technical & Sporting Regulations
+# Energy & Overtake Configuration
+
+regulations:
+  name: "FIA 2026 Formula 1 Technical & Sporting Regulations (Power Unit & Energy)"
+  version: "2026.2"
+  governing_body: "FIA"
+
+  # Regulatory Provenance Metadata (Latest 05 August 2026 Authority)
+  provenance:
+    document: "FIA 2026 F1 Regulations Section C — Technical"
+    issue: "Issue 20"
+    publication_date: "2026-08-05"
+    governing_body: "FIA World Motor Sport Council"
+    sporting_document: "FIA 2026 F1 Regulations Section B — Sporting"
+    sporting_issue: "Issue 08"
+    sporting_publication_date: "2026-08-05"
+    articles:
+      - "Article 5.4.1: MGU-K Absolute Power Limit (350 kW)"
+      - "Article 5.2.2: Energy Store Usable State-of-Charge Window (4.0 MJ capacity)"
+      - "Article 5.4.8: Normal Deployment Power Derating Curve vs Speed (1800 - 5*v and 6900 - 20*v)"
+      - "Article 5.4.9: Manual Override Mode (Overtake) Power Curve vs Speed (7100 - 20*v)"
+      - "Article 5.3.3: Per-Lap Energy Store Recharge Ceiling (8.5 MJ / lap baseline)"
+    source_url: "https://www.fia.com/regulation/category/110"
+
+  # MGU-K Power & Storage Constraints (Article 5)
+  ers_k_absolute_power_limit_kw: 350.0       # Maximum electrical power from MGU-K (kW)
+  
+  # NOTE: The 4.0 MJ Energy Store usable window specifies the maximum operational capacity 
+  # delta between full and empty state-of-charge at any point in time. It is NOT a simple 
+  # per-lap deployment allowance. Cars can continuously harvest and redeploy throughout a lap.
+  energy_store_usable_window_mj: 4.0         # Energy Store operational buffer capacity (MJ)
+  
+  recharge_limit_mj: 8.5                     # Baseline maximum Energy Store recovery limit per lap (MJ)
+  event_specific_recharge_limit_mj: null     # Circuit-specific reduced limit (null if unconfigured)
+
+  # Normal Deployment Power Curve (Regulation two-stage formula per Article 5.4.8)
+  # When Overtake is NOT active:
+  # For v < 340 km/h: P(kW) = 1800 - 5*v (subject to 0 <= P <= 350 kW)
+  # For 340 <= v < 345 km/h: P(kW) = 6900 - 20*v (subject to 0 <= P <= 350 kW)
+  # For v >= 345 km/h: P = 0 kW
+  normal_power_curve:
+    curve_type: "two_stage_piecewise"
+    base_power_kw: 350.0
+    stage1_intercept: 1800.0
+    stage1_slope: -5.0
+    stage1_speed_cutoff: 340.0
+    stage2_intercept: 6900.0
+    stage2_slope: -20.0
+    stage2_speed_cutoff: 345.0
+
+  # Manual Override (Overtake Mode) Power Curve (Article 5.4.9)
+  # For v < 355 km/h: P(kW) = 7100 - 20*v (subject to 0 <= P <= 350 kW)
+  # For v >= 355 km/h: P = 0 kW
+  overtake_power_curve:
+    curve_type: "overtake_piecewise"
+    base_power_kw: 350.0
+    overtake_intercept: 7100.0
+    overtake_slope: -20.0
+    overtake_speed_cutoff: 355.0
+
+  # Sporting & Circuit Specific Conditions
+  # Unconfigured event parameters must remain explicitly null
+  detection_gap: null                        # Detection gap threshold in seconds (null if unconfigured)
+  detection_line: null                       # Circuit coordinate / mini-sector of detection (null if unconfigured)
+  activation_line: null                      # Circuit coordinate / mini-sector of activation (null if unconfigured)
+  overtake_enabled: true                     # Global race control manual override status
+  low_grip_condition: false                  # Reduced energy deployment flag for wet/low-grip tracks
+  safety_car_active: false                   # Safety Car or VSC active (deployment restricted)
+
