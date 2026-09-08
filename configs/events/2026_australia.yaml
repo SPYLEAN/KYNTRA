@@ -35,6 +35,7 @@ event:
     overtake_active: 8.5
 
   qualifying_recharge_limit_mj: 7.0
+  free_practice_recharge_limit_mj: 8.5
 
   # Power reduction rate limit (Document 6 Item 4)
   power_reduction_rate_limit_kw_per_s: 50.0

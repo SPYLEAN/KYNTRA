@@ -13,7 +13,7 @@ KYNTRA is an engineering-first decision intelligence platform for Formula 1 raci
 ```
 KYNTRA/
 ├── configs/
-│   └── fia_2026_energy.yaml        # FIA 2026 PU & energy regulations (Issue 7, Articles 5.4.1, 5.2.2, 5.4.8, 5.4.9, 5.3.3)
+│   └── fia_2026_energy.yaml        # FIA 2026 PU & energy regulations (Issue 20, Articles C5.2.7, C5.2.8(i)/(ii), C5.2.9, C5.2.10)
 ├── data/
 │   ├── cache/                      # FastF1 disk cache directory (offline reliability)
 │   ├── processed/
@@ -97,13 +97,14 @@ pip install -e .
 
 ## ⚡ FIA 2026 Energy Regulation & Compliance
 
-The 2026 regulations fundamentally overhaul the hybrid Formula 1 powertrain:
-1. **MGU-K Maximum Electrical Power:** Increased from 120 kW to **350 kW** (Article 5.4.1).
-2. **Energy Store Usable Window:** Regulated to **4.0 MJ** per lap (Article 5.2.2).
+The 2026 regulations fundamentally overhaul the hybrid Formula 1 powertrain (Section C — Technical, Issue 20):
+1. **MGU-K Maximum Electrical Power:** Increased from 120 kW to **350 kW** (Article C5.2.7).
+2. **Energy Store Usable Window:** Regulated to **4.0 MJ** max-minus-min operational buffer (Article C5.2.9).
 3. **Power Tapering Curves:**
-   - **Normal Mode:** 350 kW up to 290 km/h, tapering linearly to 0 kW at 340 km/h.
-   - **Manual Override Mode (Overtake):** Extends full 350 kW boost up to 337 km/h, tapering down to 0 kW at 355 km/h.
-4. **Deterministic Compliance Engine (`kyntra.regulations.compliance`):**
+   - **Normal Mode:** 350 kW up to 290 km/h, tapering linearly to 0 kW at 345 km/h (Article C5.2.8(i)).
+   - **Manual Override Mode (Overtake):** Extends full 350 kW boost up to 337.5 km/h, tapering down to 0 kW at 355 km/h (Article C5.2.8(ii)).
+4. **Energy Store Recharge Limit:** Maximum per-lap recovery ceiling of **8.5 MJ** baseline (Article C5.2.10).
+5. **Deterministic Compliance Engine (`kyntra.regulations.compliance`):**
    Evaluates proposed deployment/harvesting decisions and returns explicit reason codes:
    - `ALLOWED`
    - `OVERTAKE_NOT_ENABLED`

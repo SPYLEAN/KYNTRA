@@ -1,0 +1,1057 @@
+/* ==============================================================================
+   KYNTRA Design System — Pit-Wall Operational Engineering Shell
+   Strict visual direction: Graphite dark base, crisp white/gray typography,
+   tabular numbers, restrained borders, minimal rounding, zero glow, no cyberpunk.
+   ============================================================================== */
+
+:root {
+  --bg-app: #0c0d10;
+  --bg-card: #14161c;
+  --bg-card-secondary: #1a1d24;
+  --bg-hover: #222630;
+  --border-subtle: #242833;
+  --border-active: #3a4153;
+  --border-focus: #505a73;
+
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-dim: #4b5563;
+
+  /* State & Provenance Tokens */
+  --status-green: #10b981;
+  --status-green-bg: rgba(16, 185, 129, 0.12);
+  --status-amber: #f59e0b;
+  --status-amber-bg: rgba(245, 158, 11, 0.12);
+  --status-red: #ef4444;
+  --status-red-bg: rgba(239, 68, 68, 0.12);
+  --status-cyan: #00d2be;
+  --status-cyan-bg: rgba(0, 210, 190, 0.12);
+  --status-blue: #3b82f6;
+  --status-blue-bg: rgba(59, 130, 246, 0.12);
+
+  --font-mono: "JetBrains Mono", "SF Mono", "Roboto Mono", Menlo, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+button, input, select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* App Container */
+.kyntra-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   Top Navigation & Header
+   -------------------------------------------------------------------------- */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-symbol {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brand-wordmark {
+  height: 20px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brand-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-subtle);
+}
+
+.brand-tagline {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  background-color: var(--bg-app);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.nav-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.nav-tab-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.nav-tab-btn.active {
+  color: #ffffff;
+  background-color: var(--bg-card-secondary);
+  box-shadow: inset 0 0 0 1px var(--border-active);
+}
+
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-app);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--status-green);
+}
+
+/* --------------------------------------------------------------------------
+   Sub-Header (Event Selector & Replay Scrub Controls)
+   -------------------------------------------------------------------------- */
+.sub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 10px 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.event-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.event-select {
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.event-select:focus {
+  border-color: var(--border-focus);
+}
+
+.badge-holdout {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  background-color: var(--status-cyan-bg);
+  color: var(--status-cyan);
+  border: 1px solid rgba(0, 210, 190, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  max-width: 600px;
+}
+
+.btn-ctrl {
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-ctrl:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--border-active);
+}
+
+.btn-ctrl:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-ctrl.btn-play {
+  min-width: 75px;
+  justify-content: center;
+}
+
+.scrub-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.scrub-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.scrub-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: 2px solid var(--bg-app);
+  transition: transform 0.1s ease;
+}
+
+.scrub-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.lap-counter-box {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-mono);
+}
+
+.lap-current {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.lap-total {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Main Content Layout
+   -------------------------------------------------------------------------- */
+.main-content {
+  flex: 1;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1680px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   B. ACTIVE BATTLE STRIP
+   -------------------------------------------------------------------------- */
+.battle-strip {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 16px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  align-items: center;
+}
+
+.car-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.car-card.defender {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.car-pos-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.car-meta-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.car-driver-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.car-team-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.car-tyre-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  margin-top: 4px;
+  width: fit-content;
+}
+
+.car-card.defender .car-tyre-tag {
+  margin-left: auto;
+}
+
+.compound-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.compound-hard { background-color: #ffffff; }
+.compound-medium { background-color: #facc15; }
+.compound-soft { background-color: #ef4444; }
+
+.battle-telemetry-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-left: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.battle-gap-display {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.gap-value-hero {
+  font-size: 32px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.distance-value-sub {
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.battle-metrics-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.telemetry-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.cell-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.cell-val {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   C. KYNTRA CALL (LARGEST CENTRAL VISUAL ANCHOR)
+   -------------------------------------------------------------------------- */
+.kyntra-call-banner {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--status-cyan);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.call-header-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.call-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.call-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.call-action-hero {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  padding: 4px 16px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  width: fit-content;
+}
+
+.call-overtake {
+  background-color: var(--status-green-bg);
+  color: var(--status-green);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.call-deploy {
+  background-color: var(--status-cyan-bg);
+  color: var(--status-cyan);
+  border: 1px solid rgba(0, 210, 190, 0.4);
+}
+
+.call-build {
+  background-color: var(--status-amber-bg);
+  color: var(--status-amber);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.call-conserve {
+  background-color: var(--bg-card-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.call-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.pill-badge {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.pill-badge.robust {
+  color: var(--status-green);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.pill-badge.sensitive {
+  color: var(--status-amber);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.call-why-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 20px;
+}
+
+.call-why-item {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+/* --------------------------------------------------------------------------
+   D. THE 4 DECISION PILLARS (CAN I PASS / AFFORD / KEEP / ALLOWED)
+   -------------------------------------------------------------------------- */
+.decision-pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.pillar-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pillar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+.pillar-question {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pillar-tag {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+/* Pillar 1: Can I pass? */
+.pass-horizons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.horizon-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.horizon-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.horizon-val {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #ffffff;
+}
+
+.monotonic-guarantee-note {
+  font-size: 11px;
+  color: var(--status-cyan);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+}
+
+/* Pillar 2: Can I afford it? */
+.energy-meter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.energy-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.energy-bar-bg {
+  width: 100%;
+  height: 8px;
+  background-color: var(--bg-app);
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.energy-bar-fill {
+  height: 100%;
+  background-color: var(--status-green);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.energy-stats-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.simulated-energy-banner {
+  background-color: var(--bg-app);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  color: var(--status-amber);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  letter-spacing: 0.04em;
+  margin-top: auto;
+}
+
+/* Pillar 3: Can I keep it? */
+.stability-verdict-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-app);
+}
+
+.verdict-tag {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+}
+
+.verdict-favorable { color: var(--status-green); }
+.verdict-caution { color: var(--status-amber); }
+.verdict-high-risk { color: var(--status-red); }
+.verdict-unknown { color: var(--text-muted); }
+
+.stability-evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-left: 14px;
+}
+
+.retention-v1-disclaimer {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: auto;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 6px;
+}
+
+/* Pillar 4: Am I allowed? */
+.compliance-status-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-app);
+}
+
+.status-legal { color: var(--status-green); font-weight: 800; }
+.status-blocked { color: var(--status-red); font-weight: 800; }
+
+.compliance-reasons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-left: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   E. WHY NOT ATTACK NOW? (Diagnostic Signature Panel)
+   -------------------------------------------------------------------------- */
+.why-not-panel {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+}
+
+.panel-header-simple {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.diagnostic-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.diagnostic-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.diagnostic-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.diagnostic-factor {
+  font-weight: 600;
+  color: #ffffff;
+  width: 220px;
+}
+
+/* --------------------------------------------------------------------------
+   F. COUNTERFACTUAL COMPARISON STRIP
+   -------------------------------------------------------------------------- */
+.counterfactuals-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.counterfactuals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.action-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+.action-card.recommended {
+  border-color: var(--status-cyan);
+  box-shadow: 0 0 0 1px var(--status-cyan);
+}
+
+.action-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.action-title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.rank-badge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.action-card.recommended .rank-badge {
+  background-color: var(--status-cyan-bg);
+  color: var(--status-cyan);
+  border-color: rgba(0, 210, 190, 0.4);
+}
+
+.action-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.detail-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+/* --------------------------------------------------------------------------
+   G. REPLAY TIMELINE
+   -------------------------------------------------------------------------- */
+.replay-timeline-box {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-ticks-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.timeline-track {
+  height: 6px;
+  background-color: var(--bg-app);
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  position: relative;
+  cursor: pointer;
+}
+
+.timeline-progress {
+  height: 100%;
+  background-color: var(--status-cyan);
+  border-radius: 3px;
+}
+
+.timeline-marker {
+  position: absolute;
+  top: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 2px solid var(--bg-app);
+  transform: translateX(-50%);
+}
+
+/* --------------------------------------------------------------------------
+   H. PROVENANCE & STATUS FOOTER
+   -------------------------------------------------------------------------- */
+.provenance-footer {
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border-subtle);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: auto;
+}
+
+.footer-left {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-right {
+  display: flex;
+  gap: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Secondary Screen Styles (System, Regulations, etc.)
+   -------------------------------------------------------------------------- */
+.secondary-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.page-hero {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.page-hero h1 {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.page-hero p {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.info-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.data-table-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.standard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.standard-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: 600;
+}
+
+.standard-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}

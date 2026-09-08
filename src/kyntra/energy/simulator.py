@@ -41,9 +41,9 @@ class EnergySimulator:
     """Deterministic, regulation-constrained F1 hybrid energy simulator.
 
     Simulates the 4.0 MJ Energy Store usable state-of-charge capacity window
-    defined in FIA 2026 Technical Regulations (Article 5.2.2) and enforces
-    speed-dependent MGU-K power tapering (Article 5.4.8/5.4.9) and per-lap
-    recharge ceilings (Article 5.3.3 and official Event Notes).
+    defined in FIA 2026 Technical Regulations (Article C5.2.9) and enforces
+    speed-dependent MGU-K power tapering (Article C5.2.8(i)/C5.2.8(ii)) and per-lap
+    recharge ceilings (Article C5.2.10 and official Event Notes).
     """
 
     def __init__(

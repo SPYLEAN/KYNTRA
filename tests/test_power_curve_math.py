@@ -17,11 +17,11 @@ def test_provenance_verification():
     assert "FIA 2026 F1 Regulations Section B — Sporting" in (prov.sporting_document or "")
     assert "Issue 08" in (prov.sporting_issue or "")
     assert "https://www.fia.com/regulation/category/110" in prov.source_url
-    assert any("Article 5.4.1" in art for art in prov.articles)
-    assert any("Article 5.2.2" in art for art in prov.articles)
-    assert any("Article 5.4.8" in art for art in prov.articles)
-    assert any("Article 5.4.9" in art for art in prov.articles)
-    assert any("Article 5.3.3" in art for art in prov.articles)
+    assert any("C5.2.7" in art for art in prov.articles)
+    assert any("C5.2.9" in art for art in prov.articles)
+    assert any("C5.2.8(i)" in art for art in prov.articles)
+    assert any("C5.2.8(ii)" in art for art in prov.articles)
+    assert any("C5.2.10" in art for art in prov.articles)
 
 
 def test_unverified_provenance_fails_explicitly():
@@ -43,7 +43,7 @@ def test_unverified_provenance_fails_explicitly():
 
 
 def test_normal_curve_two_stage_piecewise_formula():
-    """Verify two-stage mathematical equation for Normal Power Curve (Article 5.4.8).
+    """Verify two-stage mathematical equation for Normal Power Curve (Article C5.2.8(i)).
 
     For v < 340 km/h:
         P(kW) = 1800 - 5*v (subject to 0 <= P <= 350 kW)
@@ -87,7 +87,7 @@ def test_normal_curve_two_stage_piecewise_formula():
 
 
 def test_overtake_curve_piecewise_formula():
-    """Verify mathematical equation for Overtake Power Curve (Article 5.4.9).
+    """Verify mathematical equation for Overtake Power Curve (Article C5.2.8(ii)).
 
     For v < 355 km/h:
         P(kW) = 7100 - 20*v (subject to 0 <= P <= 350 kW)

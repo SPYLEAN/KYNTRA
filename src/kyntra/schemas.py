@@ -84,3 +84,121 @@ class ValidationReport(BaseModel):
             )
         lines.append("=" * 60)
         return "\n".join(lines)
+
+
+# ==============================================================================
+# DecisionSnapshot Contract Schemas (Phase 3 Backend ↔ Frontend)
+# ==============================================================================
+
+class RaceStateSnapshot(BaseModel):
+    """Race session identifiers and car positions at decision time."""
+    event_id: Optional[str] = None
+    event_name: Optional[str] = None
+    lap: Optional[int] = None
+    replay_time: Optional[float] = None
+    attacker: Optional[str] = None
+    defender: Optional[str] = None
+    attacker_position: Optional[int] = None
+    defender_position: Optional[int] = None
+
+
+class ProvenanceSnapshot(BaseModel):
+    """Source traceability for telemetry, models, and regulations."""
+    telemetry_source: str = "REAL_PUBLIC_TELEMETRY"
+    energy_source: str = "SIMULATED"
+    regulation_config_version: Optional[str] = "2026_FIA_ISSUE_20"
+    event_config_version: Optional[str] = "2026_V1"
+    overtake_model_version: Optional[str] = "1.0.0"
+    stability_method: Optional[str] = "DETERMINISTIC_POST_PASS_STABILITY_V1"
+
+
+class BattleStateSnapshot(BaseModel):
+    """Relative tactical race observables between attacker and defender."""
+    gap_seconds: Optional[float] = None
+    distance_gap_m: Optional[float] = None
+    closing_rate: Optional[float] = None
+    speed_delta: Optional[float] = None
+    tyre_age_delta: Optional[float] = None
+    laps_following: Optional[int] = None
+    rear_threat: Optional[str] = None
+
+
+class OvertakeInferenceSnapshot(BaseModel):
+    """Frozen LightGBM overtake probabilities with monotonic horizon projection."""
+    available: bool = False
+    model_version: Optional[str] = "1.0.0"
+    p_1_lap: Optional[float] = None
+    p_2_laps: Optional[float] = None
+    p_3_laps: Optional[float] = None
+    raw_p_1_lap: Optional[float] = None
+    raw_p_2_laps: Optional[float] = None
+    raw_p_3_laps: Optional[float] = None
+    horizon_projection_applied: bool = False
+    feature_missingness: List[str] = Field(default_factory=list)
+
+
+class StabilitySnapshot(BaseModel):
+    """Deterministic post-pass position durability evaluation (No ML retention in V1)."""
+    method: str = "DETERMINISTIC_POST_PASS_STABILITY_V1"
+    verdict: str = "UNKNOWN"  # FAVORABLE | CAUTION | HIGH_RISK | UNKNOWN
+    available: bool = False
+    evidence: List[str] = Field(default_factory=list)
+    reason: Optional[str] = "STABILITY_RULESET_PENDING_VERIFICATION"
+
+
+class EnergySnapshot(BaseModel):
+    """Simulated 2026 regulation-constrained electrical energy state."""
+    available_energy_mj: Optional[float] = None
+    fraction: Optional[float] = None
+    scenario: Optional[str] = None
+    simulated: bool = True
+    provenance: str = "SIMULATED"
+    projected_action_cost_mj: Optional[float] = None
+    projected_post_action_reserve_mj: Optional[float] = None
+    sensitivity: Optional[str] = None  # ROBUST | ENERGY_SENSITIVE
+
+
+class ComplianceSnapshot(BaseModel):
+    """Deterministic FIA regulation and track status compliance."""
+    status: str = "UNKNOWN"  # LEGAL | BLOCKED | UNKNOWN
+    allowed_actions: List[str] = Field(default_factory=list)
+    blocked_actions: List[str] = Field(default_factory=list)
+    reason_codes: List[str] = Field(default_factory=list)
+
+
+class CounterfactualActionSnapshot(BaseModel):
+    """Scenario simulation for a candidate tactical action."""
+    action: str  # CONSERVE | BUILD | DEPLOY | OVERTAKE
+    available: bool = False
+    feasible: Optional[bool] = None
+    pass_outcome: Optional[str] = None
+    retention_outcome: Optional[str] = None
+    ending_energy_mj: Optional[float] = None
+    future_opportunity: Optional[str] = None
+    rank: Optional[int] = None
+    reason: Optional[str] = "COUNTERFACTUAL_ENGINE_PENDING_VERIFICATION"
+
+
+class RecommendationSnapshot(BaseModel):
+    """KYNTRA Call: tactical recommendation and structured fact rationale."""
+    available: bool = False
+    canonical_action: Optional[str] = None  # CONSERVE | BUILD | DEPLOY | OVERTAKE
+    ui_label: Optional[str] = None          # SAVE ENERGY | PREPARE | APPLY PRESSURE | OVERTAKE NOW
+    robust: Optional[bool] = None
+    energy_sensitive: Optional[bool] = None
+    why: List[str] = Field(default_factory=list)
+    reason: Optional[str] = "STRATEGY_ENGINE_PENDING_VERIFICATION"
+
+
+class DecisionSnapshot(BaseModel):
+    """Complete coherent tactical decision snapshot for KYNTRA UI and API."""
+    race: RaceStateSnapshot
+    provenance: ProvenanceSnapshot
+    battle: BattleStateSnapshot
+    overtake: OvertakeInferenceSnapshot
+    energy: EnergySnapshot
+    stability: StabilitySnapshot
+    compliance: ComplianceSnapshot
+    counterfactuals: List[CounterfactualActionSnapshot]
+    recommendation: RecommendationSnapshot
+

@@ -28,7 +28,7 @@ def test_power_limit_normal_mode_allowed(fia_config):
 
 def test_power_limit_normal_mode_exceeded(fia_config):
     """Verify power above normal tapered limit returns POWER_LIMIT_EXCEEDED."""
-    # Under Article 5.4.8: at 315 km/h, normal max power is 1800 - 5*(315) = 225.0 kW
+    # Under Article C5.2.8(i): at 315 km/h, normal max power is 1800 - 5*(315) = 225.0 kW
     res = check_power_limit(fia_config, requested_power_kw=250.0, speed_kmh=315.0, is_overtake_mode=False)
     assert res.is_compliant is False
     assert res.reason == ComplianceReason.POWER_LIMIT_EXCEEDED

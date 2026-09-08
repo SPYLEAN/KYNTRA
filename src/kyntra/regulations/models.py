@@ -72,6 +72,9 @@ class EventRegulationConfig(BaseModel):
         description="Event recharge limits (overtake inactive vs active)",
     )
     qualifying_recharge_limit_mj: float = Field(7.0, description="Qualifying recharge limit in MJ")
+    free_practice_recharge_limit_mj: Optional[float] = Field(
+        8.5, description="Free practice recharge limit in MJ"
+    )
     power_reduction_rate_limit_kw_per_s: float = Field(
         50.0, description="Power reduction rate limit in kW/s"
     )
@@ -88,11 +91,11 @@ class PowerCurveConfig(BaseModel):
     """Piecewise power curve configuration defining maximum allowable power vs speed.
 
     Supports:
-    1. Two-stage regulation normal curve (Article 5.4.8):
+    1. Two-stage regulation normal curve (Article C5.2.8(i)):
        - For v < 340 km/h: P(kW) = 1800 - 5*v (subject to 0 <= P <= 350 kW)
        - For 340 <= v < 345 km/h: P(kW) = 6900 - 20*v (subject to 0 <= P <= 350 kW)
        - For v >= 345 km/h: P = 0 kW
-    2. Regulation overtake curve (Article 5.4.9):
+    2. Regulation overtake curve (Article C5.2.8(ii)):
        - For v < 355 km/h: P(kW) = 7100 - 20*v (subject to 0 <= P <= 350 kW)
        - For v >= 355 km/h: P = 0 kW
     3. Generic / legacy piecewise linear curves.
@@ -107,7 +110,7 @@ class PowerCurveConfig(BaseModel):
     taper_slope_kw_per_kmh: Optional[float] = Field(None, description="Explicit tapering slope")
     points: List[PowerCurvePoint] = Field(default_factory=list)
 
-    # Normal curve formula parameters (Article 5.4.8)
+    # Normal curve formula parameters (Article C5.2.8(i))
     stage1_intercept: float = Field(default=1800.0)
     stage1_slope: float = Field(default=-5.0)
     stage1_speed_cutoff: float = Field(default=340.0)
@@ -115,7 +118,7 @@ class PowerCurveConfig(BaseModel):
     stage2_slope: float = Field(default=-20.0)
     stage2_speed_cutoff: float = Field(default=345.0)
 
-    # Overtake curve formula parameters (Article 5.4.9)
+    # Overtake curve formula parameters (Article C5.2.8(ii))
     overtake_intercept: float = Field(default=7100.0)
     overtake_slope: float = Field(default=-20.0)
     overtake_speed_cutoff: float = Field(default=355.0)

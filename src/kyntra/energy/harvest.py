@@ -18,7 +18,7 @@ class HarvestModelConfig(BaseModel):
         350.0,
         ge=0.0,
         le=350.0,
-        description="MGU-K maximum electrical generation capacity under FIA Article 5.4.1 (kW)",
+        description="MGU-K maximum electrical generation capacity under FIA Article C5.2.7 (kW)",
     )
     brake_harvest_efficiency: float = Field(
         0.75,
