@@ -173,10 +173,65 @@ class StrategyMatrixSnapshot(BaseModel):
     current_state_summary: Dict[str, Any] = Field(default_factory=dict)
     pass_window: PassWindowSnapshot = Field(default_factory=PassWindowSnapshot)
     actions: Dict[str, ActionOutcomeSnapshot] = Field(default_factory=dict)
-    ranking: Dict[str, Any] = Field(
-        default_factory=lambda: {"available": False, "reason": "STRATEGY_RANKING_PENDING_PHASE_08"}
-    )
-    recommendation: Dict[str, Any] = Field(
-        default_factory=lambda: {"available": False, "reason": "STRATEGY_RANKING_PENDING_PHASE_08"}
-    )
-    reason: str = "STRATEGY_RANKING_PENDING_PHASE_08"
+    ranking: Dict[str, Any] = Field(default_factory=dict)
+    recommendation: Dict[str, Any] = Field(default_factory=dict)
+    reason: str = "STRATEGY_MATRIX_EVALUATED"
+
+
+class StrategyCriterion(str, Enum):
+    """Canonical 6-tier lexicographic strategy criteria in exact priority order."""
+    REGULATORY_ELIGIBILITY = "REGULATORY_ELIGIBILITY"
+    PHYSICAL_ENERGY_FEASIBILITY = "PHYSICAL_ENERGY_FEASIBILITY"
+    DURABLE_TRACK_POSITION = "DURABLE_TRACK_POSITION"
+    FUTURE_WINDOW_DOMINANCE = "FUTURE_WINDOW_DOMINANCE"
+    CUMULATIVE_LAP_TIME = "CUMULATIVE_LAP_TIME"
+    TERMINAL_SIMULATED_ENERGY = "TERMINAL_SIMULATED_ENERGY"
+
+
+class ActionEvaluationTrace(BaseModel):
+    """Audit trace of an individual action's performance through the lexicographic hierarchy."""
+    action: StrategistAction
+    rank: Optional[int] = None
+    selectable: bool = True
+    criterion_trace: Dict[str, Any] = Field(default_factory=dict)
+    dominates: List[str] = Field(default_factory=list)
+    dominated_by: List[str] = Field(default_factory=list)
+    exclusion_reasons: List[str] = Field(default_factory=list)
+    excluded_at: Optional[str] = None
+
+
+class ScenarioRankingResult(BaseModel):
+    """Lexicographic ranking outcome under a discrete energy sensitivity scenario."""
+    scenario_name: str  # CONSERVATIVE | NOMINAL | FAVORABLE
+    winner: Optional[str] = None  # CONSERVE | BUILD | DEPLOY | OVERTAKE | NO_DOMINANT_ACTION | INSUFFICIENT_INFORMATION
+    ranked_actions: List[ActionEvaluationTrace] = Field(default_factory=list)
+    comparison_trace: List[str] = Field(default_factory=list)
+
+
+class StrategyRankingSnapshot(BaseModel):
+    """Complete transparent lexicographic ranking snapshot for the strategist matrix."""
+    available: bool = False
+    ranked_actions: List[ActionEvaluationTrace] = Field(default_factory=list)
+    excluded_actions: List[ActionEvaluationTrace] = Field(default_factory=list)
+    scenario_rankings: Dict[str, ScenarioRankingResult] = Field(default_factory=dict)
+    robustness: str = "INSUFFICIENT_INFORMATION"  # ROBUST_WITHIN_TESTED_ASSUMPTIONS | ENERGY_SENSITIVE | INSUFFICIENT_INFORMATION
+    comparison_trace: List[str] = Field(default_factory=list)
+    reason_codes: List[str] = Field(default_factory=list)
+    strategy_config_version: str = "1.0.0"
+    strategy_config_sha256: Optional[str] = None
+    generated_at: str = Field(default_factory=str)
+
+
+class CandidateRecommendation(BaseModel):
+    """Candidate KYNTRA Call emitted from lexicographic ranking, pending final publication gate."""
+    available: bool = False
+    backend_action: Optional[str] = None  # CONSERVE | BUILD | DEPLOY | OVERTAKE
+    ui_call: Optional[str] = None         # SAVE ENERGY | PREPARE | APPLY PRESSURE | OVERTAKE NOW
+    robustness: str = "INSUFFICIENT_INFORMATION"
+    primary_reason: Optional[str] = None
+    reason_codes: List[str] = Field(default_factory=list)
+    why_selected: List[str] = Field(default_factory=list)
+    why_not_overtake: List[str] = Field(default_factory=list)
+    scenario_winners: Dict[str, Optional[str]] = Field(default_factory=dict)
+    publication_status: str = "PENDING_FINAL_GATE"
+

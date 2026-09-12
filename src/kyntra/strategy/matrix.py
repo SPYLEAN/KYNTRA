@@ -22,10 +22,14 @@ from kyntra.strategy.config import load_strategy_counterfactual_config
 from kyntra.strategy.counterfactuals import simulate_action_outcome
 from kyntra.strategy.models import (
     ActionOutcomeSnapshot,
+    CandidateRecommendation,
     PassWindowSnapshot,
     StrategistAction,
     StrategyMatrixSnapshot,
+    StrategyRankingSnapshot,
 )
+from kyntra.strategy.ranking import evaluate_lexicographic_ranking
+from kyntra.strategy.recommendation import generate_candidate_recommendation
 
 FROZEN_MODEL_SHA = "a368b02089c65e6043c04a2f4d132ccaacfd644c545e4d7958e49420e50b3ad5"
 
@@ -36,6 +40,7 @@ def generate_strategy_matrix(
     simulated_energy_state: Optional[Dict[str, Any]] = None,
     horizon_laps: int = 3,
     action_order: Optional[List[StrategistAction]] = None,
+    enable_ranking: bool = False,
 ) -> StrategyMatrixSnapshot:
     """Generate canonical StrategyMatrixSnapshot evaluating CONSERVE, BUILD, DEPLOY, OVERTAKE.
     
@@ -45,6 +50,7 @@ def generate_strategy_matrix(
         simulated_energy_state: Optional simulated energy accounting dictionary.
         horizon_laps: Strategist rollout horizon in laps (default: 3).
         action_order: Optional explicit evaluation sequence for regression testing.
+        enable_ranking: Whether to execute Phase 08 Lexicographic Strategy Ranking (default: False).
     
     Returns:
         StrategyMatrixSnapshot: Immutable-style canonical strategy matrix.
@@ -148,6 +154,26 @@ def generate_strategy_matrix(
         )
         actions_dict[act.value] = outcome
 
+    # 7. Evaluate Lexicographic Strategy Ranking & Candidate Recommendation
+    if enable_ranking:
+        ranking_snapshot = evaluate_lexicographic_ranking(
+            matrix_actions=actions_dict,
+            strategy_config=strat_cfg,
+            battle_data=battle_data,
+        )
+        candidate_rec = generate_candidate_recommendation(
+            ranking_snapshot=ranking_snapshot,
+            matrix_actions=actions_dict,
+            battle_data=battle_data,
+        )
+        ranking_dict = ranking_snapshot.model_dump()
+        rec_dict = candidate_rec.model_dump()
+        primary_reason = candidate_rec.primary_reason or "STRATEGY_MATRIX_EVALUATED"
+    else:
+        ranking_dict = {"available": False, "reason": "STRATEGY_RANKING_PENDING_PHASE_08"}
+        rec_dict = {"available": False, "reason": "STRATEGY_RANKING_PENDING_PHASE_08"}
+        primary_reason = "STRATEGY_RANKING_PENDING_PHASE_08"
+
     # Assemble summary
     state_summary = {
         "gap_seconds": battle_data.get("gap_seconds"),
@@ -186,7 +212,7 @@ def generate_strategy_matrix(
         current_state_summary=state_summary,
         pass_window=pass_window,
         actions=actions_dict,
-        ranking={"available": False, "reason": "STRATEGY_RANKING_PENDING_PHASE_08"},
-        recommendation={"available": False, "reason": "STRATEGY_RANKING_PENDING_PHASE_08"},
-        reason="STRATEGY_RANKING_PENDING_PHASE_08",
+        ranking=ranking_dict,
+        recommendation=rec_dict,
+        reason=primary_reason,
     )
