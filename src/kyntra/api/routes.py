@@ -4,6 +4,7 @@ Exposes REST endpoints for system status, demo events, historical replay,
 battle states, and the core DecisionSnapshot engine.
 """
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -674,5 +675,164 @@ def evaluate_publication_and_decision(req: DecisionRequest) -> Dict[str, Any]:
     )
     return snap.model_dump()
 
+# ==============================================================================
+# PHASE 10: CANONICAL RUNTIME ORCHESTRATOR & HEALTH APIS
+# ==============================================================================
+
+class RuntimeControlRequest(BaseModel):
+    """Payload for runtime replay and battle selection controls."""
+    action: str = Field(..., description="Control action: start | pause | resume | seek | speed | select_battle | step")
+    lap: Optional[int] = None
+    speed: Optional[float] = None
+    battle_id: Optional[str] = None
 
 
+class FailureInjectionRequest(BaseModel):
+    """Development-only failure injection control payload."""
+    provider_outage: Optional[bool] = None
+    stale_telemetry_s: Optional[float] = None
+    energy_unavailable: Optional[bool] = None
+    force_vsc: Optional[bool] = None
+    force_rule_uncertainty: Optional[bool] = None
+    enable_injection_mode: Optional[bool] = None
+    reset_all: Optional[bool] = False
+
+
+@router.get("/runtime")
+def get_canonical_runtime_snapshot() -> Dict[str, Any]:
+    """Retrieve the canonical single-source-of-truth KyntraRuntimeSnapshot."""
+    from kyntra.runtime import get_runtime_orchestrator
+
+    orchestrator = get_runtime_orchestrator()
+    snap = orchestrator.get_current_snapshot()
+    if snap is None:
+        # Step once to initialize state if idle
+        snap = orchestrator.step()
+    if snap is None:
+        raise HTTPException(status_code=503, detail="Runtime orchestrator state is not yet initialized.")
+    return snap.model_dump()
+
+
+@router.get("/runtime/health")
+def get_runtime_health() -> Dict[str, Any]:
+    """Retrieve composite platform health status and individual module diagnostics."""
+    from kyntra.runtime import get_runtime_orchestrator
+
+    orchestrator = get_runtime_orchestrator()
+    snap = orchestrator.get_current_snapshot()
+    if snap is None:
+        snap = orchestrator.step()
+    if snap:
+        return snap.health.model_dump()
+    return {"system_health": "OFFLINE", "modules": {}, "updated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/runtime/battles")
+def get_runtime_active_battles(include_expired: bool = False) -> List[Dict[str, Any]]:
+    """Retrieve all tracked battles, their continuity counters, and expiration states."""
+    from kyntra.runtime import get_runtime_orchestrator
+
+    orchestrator = get_runtime_orchestrator()
+    trackers = orchestrator.battle_manager.get_tracked_battles(include_expired=include_expired)
+    return [t.model_dump() for t in trackers]
+
+
+@router.get("/runtime/battle/{battle_id}")
+def get_runtime_battle_detail(battle_id: str) -> Dict[str, Any]:
+    """Retrieve granular tracking status for a specific battle."""
+    from kyntra.runtime import get_runtime_orchestrator
+
+    orchestrator = get_runtime_orchestrator()
+    tracker = orchestrator.battle_manager.get_battle_tracker(battle_id)
+    if not tracker:
+        raise HTTPException(status_code=404, detail=f"Tracked battle '{battle_id}' not found.")
+    return tracker.model_dump()
+
+
+@router.get("/runtime/history")
+def get_runtime_decision_history(battle_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieve chronological history of runtime decisions and audit snapshots."""
+    from kyntra.decision.store import get_decision_store
+
+    store = get_decision_store()
+    if battle_id:
+        return store.get_decision_history(battle_id=battle_id, limit=limit)
+    # Global recent decisions across timeline
+    with store._lock:
+        dec_ids = store._decision_timeline[-limit:]
+        return [dict(store._decisions_by_id[did]) for did in dec_ids if did in store._decisions_by_id]
+
+
+@router.post("/runtime/control")
+def control_runtime_replay(req: RuntimeControlRequest) -> Dict[str, Any]:
+    """Control replay progression, seeking, playback speed, and battle selection."""
+    from kyntra.runtime import get_runtime_orchestrator
+
+    orchestrator = get_runtime_orchestrator()
+    action = req.action.lower()
+
+    if action == "start":
+        orchestrator.start()
+        return {"status": "SUCCESS", "message": "Runtime orchestrator started."}
+    elif action == "pause":
+        orchestrator.pause()
+        return {"status": "SUCCESS", "message": "Runtime orchestrator paused."}
+    elif action == "resume":
+        orchestrator.resume()
+        return {"status": "SUCCESS", "message": "Runtime orchestrator resumed."}
+    elif action == "seek":
+        if req.lap is None:
+            raise HTTPException(status_code=400, detail="Missing required 'lap' parameter for seek action.")
+        success = orchestrator.seek(req.lap)
+        return {"status": "SUCCESS" if success else "FAILED", "lap": req.lap}
+    elif action == "speed":
+        if req.speed is None:
+            raise HTTPException(status_code=400, detail="Missing required 'speed' parameter for speed action.")
+        orchestrator.set_speed(req.speed)
+        return {"status": "SUCCESS", "speed": req.speed}
+    elif action == "select_battle":
+        success = orchestrator.select_battle(req.battle_id)
+        return {"status": "SUCCESS" if success else "FAILED", "selected_battle_id": req.battle_id}
+    elif action == "step":
+        snap = orchestrator.step()
+        return {"status": "SUCCESS", "lap": snap.current_lap if snap else None}
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported control action '{req.action}'.")
+
+
+@router.post("/runtime/inject-failure")
+def inject_runtime_failure(req: FailureInjectionRequest) -> Dict[str, Any]:
+    """Configure development-only controlled failure injection hooks."""
+    from kyntra.runtime import get_runtime_orchestrator
+
+    orchestrator = get_runtime_orchestrator()
+    injector = orchestrator.failure_injector
+
+    if req.enable_injection_mode is not None:
+        if req.enable_injection_mode:
+            injector.enable_injection_mode()
+        else:
+            injector.disable_injection_mode()
+
+    if req.reset_all:
+        injector.reset()
+        return {"status": "RESET", "config": injector.get_status()}
+
+    if not injector.allow_injection:
+        raise HTTPException(
+            status_code=403,
+            detail="Failure injection is disabled. Set enable_injection_mode=True in development mode to unlock.",
+        )
+
+    if req.provider_outage is not None:
+        injector.set_provider_outage(req.provider_outage)
+    if req.stale_telemetry_s is not None:
+        injector.set_stale_telemetry(req.stale_telemetry_s)
+    if req.energy_unavailable is not None:
+        injector.set_energy_unavailable(req.energy_unavailable)
+    if req.force_vsc is not None:
+        injector.set_force_vsc(req.force_vsc)
+    if req.force_rule_uncertainty is not None:
+        injector.set_force_rule_uncertainty(req.force_rule_uncertainty)
+
+    return {"status": "CONFIGURED", "config": injector.get_status()}

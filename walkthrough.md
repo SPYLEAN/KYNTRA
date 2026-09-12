@@ -1,43 +1,76 @@
-# KYNTRA — PHASE 07: DYNAMIC STRATEGIST MATRIX & COUNTERFACTUAL SCENARIO ENGINE
+# Walkthrough — Phase 10: Production Runtime Orchestrator & Backend Confidence Audit
 
-## Executive Summary
-KYNTRA Phase 07 implements the canonical backend **Strategist Matrix** (`StrategyMatrixSnapshot`), evaluating four counterfactual decision alternatives (`CONSERVE`, `BUILD`, `DEPLOY`, `OVERTAKE`) from the same coherent battle state without fabricating ML probabilities or prematurely enabling strategy ranking.
+## Overview
+Phase 10 successfully transitions KYNTRA from discrete modular components into one continuous, resilient, observable race-strategy runtime orchestrator: `KyntraRuntimeOrchestrator`.
 
-- **Fair Baseline Invariant**: All four action rollouts begin from the exact same cloned source state, proving 100% action-order independence.
-- **ML Truth Gating**: Preserves frozen LightGBM baseline $P_1, P_2, P_3$. Strictly enforces `action_effect_available = False` without fabricated action-conditioned probabilities.
-- **2026 Regulation Energy Scenarios**: Computes `CONSERVATIVE`, `NOMINAL`, and `FAVORABLE` scenarios per action under FIA 2026 MGU-K power tapering and 4.0 MJ usable window constraints.
-- **Independent Regulation Eligibility**: Evaluates sporting legality per action; under SC/VSC, `OVERTAKE` is blocked while `DEPLOY`, `CONSERVE`, and `BUILD` remain allowed.
-- **Stability V1 Integration**: Reuses locked Stability V1 consensus; maps durability to `OVERTAKE` while marking `CONSERVE` and `BUILD` as `NOT_APPLICABLE`.
-- **Ranking & Recommendation Gating**: Confirmed `ranking.available = False` and `recommendation.available = False` pending Phase 08.
+The orchestrator guarantees a unified canonical state (`KyntraRuntimeSnapshot`) delivered to the strategist workstation over REST and streaming WebSockets, with sub-100ms median cycle execution latency, multi-car battle tracking, non-crashing failure hierarchies, and SQLite audit durability.
 
 ---
 
-## 1. Verified Architecture & Components
+## Changes Implemented
 
-### 1.1 Strategy Domain Subsystem (`src/kyntra/strategy/`)
-- [`models.py`](file:///c:/Users/tanvi/OneDrive/Documents/TRACKSHIFT%202026/KYNTRA/src/kyntra/strategy/models.py): Canonical schemas for `StrategistAction`, `ActionOutcomeSnapshot`, `StrategyMatrixSnapshot`, and discrete energy/pass/stability/forecast sub-snapshots.
-- [`counterfactuals.py`](file:///c:/Users/tanvi/OneDrive/Documents/TRACKSHIFT%202026/KYNTRA/src/kyntra/strategy/counterfactuals.py): Deterministic action simulators for sporting regulation checks, 3-scenario energy rollouts, post-pass durability mapping, and short-horizon forecasts.
-- [`matrix.py`](file:///c:/Users/tanvi/OneDrive/Documents/TRACKSHIFT%202026/KYNTRA/src/kyntra/strategy/matrix.py): Core generator `generate_strategy_matrix()` combining pass window inference, stability consensus, and isolated action rollouts.
+### 1. Runtime Data Models (`src/kyntra/runtime/models.py`)
+- Defined `RuntimeMode` (`LIVE_FEED`, `CAPTURED_LIVE`, `HISTORICAL_REPLAY`, `REANALYSIS`, `SYNTHETIC_TEST`).
+- Defined `SystemHealthStatus` (`OPERATIONAL`, `DEGRADED`, `DECISION_BLOCKED`, `OFFLINE`) and granular per-module health (`ModuleHealth`, `RuntimeHealthSnapshot`).
+- Defined `LatencyMetrics` tracking local execution time for every pipeline stage and rolling percentiles ($p_{50}$, $p_{95}$).
+- Defined `ActiveBattleTracker` and `KyntraRuntimeSnapshot` as the single canonical schema for the frontend pit wall.
 
-### 1.2 REST API Integration (`src/kyntra/api/routes.py`)
-- `GET /api/strategy/matrix/current`: Convenience alias for current/active battle matrix.
-- `GET /api/strategy/matrix/{event_id}/{lap}`: Replay matrix for a given lap.
-- `GET /api/strategy/matrix/{event_id}/{lap}/{attacker}/{defender}`: Matrix for an explicit battle pair.
-- `POST /api/strategy/matrix`: On-demand matrix generation from custom payload.
+### 2. Active Battle Management (`src/kyntra/runtime/battle_manager.py`)
+- Tracks active battles across successive laps.
+- Manages battle identity, continuous lap counts, gap variations, and TTL-based expiration.
+- Supports user-selected battle focus with automatic fallback to closest on-track battle if the selected battle ends.
+
+### 3. Safety-Gated Failure Injection (`src/kyntra/runtime/failure_injection.py`)
+- Provides deterministic fault testing (`provider_outage`, `stale_telemetry_s`, `energy_unavailable`, `force_vsc`, `force_rule_uncertainty`).
+- Strictly isolated by safety lock—disabled by default in live/production modes.
+
+### 4. Durable Decision Audit Store (`src/kyntra/decision/store.py`)
+- Upgraded with optional SQLite persistence (`decisions` and `calls` tables with WAL mode).
+- Guarantees zero decision loss across process restarts while maintaining memory-speed ring buffer reads.
+
+### 5. Production Runtime Orchestrator (`src/kyntra/runtime/orchestrator.py`)
+- Consolidates the complete 13-stage racecraft spine.
+- Manages continuous background threading loop, replay controls (`start`, `pause`, `resume`, `seek`, `speed`), step execution, and WebSocket event broadcasting.
+- Uses `threading.RLock()` to prevent deadlocks between control API and update loop.
+
+### 6. Public APIs (`src/kyntra/api/routes.py`)
+- Added endpoints:
+  - `GET /api/runtime`: Fetches canonical runtime snapshot.
+  - `GET /api/runtime/health`: System & per-module health diagnostics.
+  - `GET /api/runtime/battles`: Lists all currently tracked battles.
+  - `GET /api/runtime/battle/{battle_id}`: Inspects specific tracked battle.
+  - `GET /api/runtime/history`: Retrieves published decision audit trail.
+  - `POST /api/runtime/control`: Replay controls (`start`, `pause`, `resume`, `seek`, `speed`, `select_battle`, `step`).
+  - `POST /api/runtime/inject-failure`: Test-only fault injection hook.
 
 ---
 
-## 2. Automated Verification & Performance
+## Verification & Performance Results
 
-- **Full Backend Pytest Suite**: **144 passed** in 26.58s (`pytest tests/`)
-- **Strategy Matrix Suite**: **21 passed** (`tests/test_strategy_matrix.py`)
-  - Order-independence regression test: **PASSED**
-  - ML truth invariant (`action_effect_available is False`): **PASSED**
-  - Regulation SC/VSC blocking: **PASSED**
-  - Energy scenario invariants: **PASSED**
-  - Degradation and provenance checks: **PASSED**
-- **Performance Benchmark (100 runs)**:
-  - **Median Latency**: **18.11 ms**
-  - **P95 Latency**: **23.03 ms**
-- **Frozen Model Bundle SHA**: `a368b02089c65e6043c04a2f4d132ccaacfd644c545e4d7958e49420e50b3ad5` (**VERIFIED UNTOUCHED**)
-- **Web Frontend Build**: `npm run build` in `web/` $\rightarrow$ built in 1.04s (0 errors).
+### Automated Test Suite
+- **Full Backend Pytest Suite:** **246 / 246 PASSED (100% green)** in 55.48s.
+  - 237 existing tests preserved intact.
+  - 9 comprehensive Phase 10 integration and edge-case tests.
+- **Frozen LightGBM Bundle SHA-256:**
+  - `a368b02089c65e6043c04a2f4d132ccaacfd644c545e4d7958e49420e50b3ad5` (VERIFIED MATCH).
+- **Frontend Production Build:**
+  - `npm run build`: Built cleanly with 0 TypeScript/Vite errors in 589ms.
+
+### 100-Update Performance Benchmark
+Executed 100 continuous updates through the full pipeline:
+- **Median End-to-End Cycle:** **89.83 ms** (Well within 1,000 ms real-time timing loop).
+- **95th Percentile:** 324.06 ms.
+- **Average Throughput:** 129.68 ms/update.
+- **Per-Stage Breakdown:**
+  - Ingestion & Coherence: 4.94 ms ($p_{50}$)
+  - Feature Extraction: 0.15 ms ($p_{50}$)
+  - ML Inference (LightGBM + PAV): 18.15 ms ($p_{50}$)
+  - Strategist Matrix (4 actions): 19.79 ms ($p_{50}$)
+  - Lexicographic 6-Tier Ranking: 3.96 ms ($p_{50}$)
+  - 7-Point Publication Gate: 41.64 ms ($p_{50}$)
+
+---
+
+## Artifacts Generated
+- Report: [phase-10-runtime-confidence.md](file:///c:/Users/tanvi/OneDrive/Documents/TRACKSHIFT%202026/KYNTRA/reports/phase-10-runtime-confidence.md)
+- Benchmark script: [benchmark_runtime_100.py](file:///c:/Users/tanvi/OneDrive/Documents/TRACKSHIFT%202026/KYNTRA/scratch/benchmark_runtime_100.py)
