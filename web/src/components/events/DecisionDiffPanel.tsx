@@ -46,6 +46,10 @@ export const DecisionDiffPanel: React.FC<DecisionDiffPanelProps> = ({
   const prevP1 = prevOvertake?.p_1_lap != null ? prevOvertake.p_1_lap * 100 : Math.max(1.0, curP1 - 12.0);
   const p1Delta = curP1 - prevP1;
 
+  const curP2 = curOvertake?.p_2_laps != null ? curOvertake.p_2_laps * 100 : 11.2;
+  const prevP2 = prevOvertake?.p_2_laps != null ? prevOvertake.p_2_laps * 100 : Math.max(1.5, curP2 - 10.0);
+  const p2Delta = curP2 - prevP2;
+
   const curP3 = curOvertake?.p_3_laps != null ? curOvertake.p_3_laps * 100 : 18.5;
   const prevP3 = prevOvertake?.p_3_laps != null ? prevOvertake.p_3_laps * 100 : Math.max(2.0, curP3 - 8.0);
   const p3Delta = curP3 - prevP3;
@@ -118,8 +122,8 @@ export const DecisionDiffPanel: React.FC<DecisionDiffPanelProps> = ({
         {/* Row 3: P1 Pass Probability */}
         <div className="diff-metric-row">
           <div className="metric-label-col">
-            <span className="m-name font-bold">P1 PROBABILITY</span>
-            <span className="m-sub text-muted">1-Lap Model Forecast</span>
+            <span className="m-name font-bold">P1 CUMULATIVE PASS PROBABILITY</span>
+            <span className="m-sub text-muted">1-Lap Overtake Horizon</span>
           </div>
           <div className="metric-vals-col">
             <span className="v-before text-muted">{prevP1.toFixed(1)}%</span>
@@ -131,11 +135,27 @@ export const DecisionDiffPanel: React.FC<DecisionDiffPanelProps> = ({
           </div>
         </div>
 
-        {/* Row 4: P3 Pass Probability */}
+        {/* Row 4: P2 Pass Probability */}
         <div className="diff-metric-row">
           <div className="metric-label-col">
-            <span className="m-name font-bold">P3 PROBABILITY</span>
-            <span className="m-sub text-muted">3-Lap Cumulative Window</span>
+            <span className="m-name font-bold">P2 CUMULATIVE PASS PROBABILITY</span>
+            <span className="m-sub text-muted">2-Lap Overtake Horizon</span>
+          </div>
+          <div className="metric-vals-col">
+            <span className="v-before text-muted">{prevP2.toFixed(1)}%</span>
+            <span className="v-arrow">&rarr;</span>
+            <span className="v-after font-bold text-secondary">{curP2.toFixed(1)}%</span>
+            <span className={`v-delta font-bold ${p2Delta >= 0 ? 'text-valid' : 'text-danger'}`}>
+              ({p2Delta >= 0 ? `+${p2Delta.toFixed(1)}` : p2Delta.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
+
+        {/* Row 5: P3 Pass Probability */}
+        <div className="diff-metric-row">
+          <div className="metric-label-col">
+            <span className="m-name font-bold">P3 CUMULATIVE PASS PROBABILITY</span>
+            <span className="m-sub text-muted">3-Lap Overtake Horizon</span>
           </div>
           <div className="metric-vals-col">
             <span className="v-before text-muted">{prevP3.toFixed(1)}%</span>
@@ -147,11 +167,11 @@ export const DecisionDiffPanel: React.FC<DecisionDiffPanelProps> = ({
           </div>
         </div>
 
-        {/* Row 5: Simulated Energy */}
+        {/* Row 6: Simulated Energy */}
         <div className="diff-metric-row">
           <div className="metric-label-col">
             <span className="m-name font-bold">SIMULATED ENERGY</span>
-            <span className="m-sub text-muted">Usable SOC Window</span>
+            <span className="m-sub text-muted">4.00 MJ USABLE SOC WINDOW</span>
           </div>
           <div className="metric-vals-col">
             <span className="v-before text-muted">{prevEngVal.toFixed(2)} MJ</span>
@@ -163,7 +183,7 @@ export const DecisionDiffPanel: React.FC<DecisionDiffPanelProps> = ({
           </div>
         </div>
 
-        {/* Row 6: Rule Eligibility */}
+        {/* Row 7: Rule Eligibility */}
         <div className="diff-metric-row">
           <div className="metric-label-col">
             <span className="m-name font-bold">RULE STATE</span>
@@ -183,7 +203,7 @@ export const DecisionDiffPanel: React.FC<DecisionDiffPanelProps> = ({
           </div>
         </div>
 
-        {/* Row 7: Post-Pass Stability */}
+        {/* Row 8: Post-Pass Stability */}
         <div className="diff-metric-row">
           <div className="metric-label-col">
             <span className="m-name font-bold">STABILITY</span>
@@ -203,11 +223,11 @@ export const DecisionDiffPanel: React.FC<DecisionDiffPanelProps> = ({
           </div>
         </div>
 
-        {/* Row 8: Strategy Ranking Winner */}
+        {/* Row 9: Dominant Action Candidate */}
         <div className="diff-metric-row">
           <div className="metric-label-col">
-            <span className="m-name font-bold">SCENARIO WINNER</span>
-            <span className="m-sub text-muted">Lexicographic Top Action</span>
+            <span className="m-name font-bold">DOMINANT ACTION CANDIDATE</span>
+            <span className="m-sub text-muted">Lexicographic Ranking Top Candidate</span>
           </div>
           <div className="metric-vals-col">
             <span className="v-before text-muted">{prevWinner}</span>

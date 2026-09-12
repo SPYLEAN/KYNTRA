@@ -34,20 +34,17 @@ export const DecisionTimeline: React.FC<DecisionTimelineProps> = ({
       const histSnap = decisionHistory?.find((h: any) => h.race?.lap === lap);
       const evMatch = events?.find((e: RaceEvent) => e.lap === lap);
 
-      let call = 'PREPARE';
-      let action = 'BUILD';
+      let call = 'UNRECORDED';
+      let action = 'NONE';
       let status: 'VALID' | 'WITHHELD' | 'BLOCKED' = 'VALID';
 
       if (histSnap?.published_call) {
         call = histSnap.published_call.ui_call || 'PREPARE';
         action = histSnap.published_call.backend_action || 'BUILD';
         status = histSnap.published_call.lifecycle_state || 'VALID';
-      } else if (lap === 11 || lap === 13 || lap === 20 || lap === 22 || lap === 23) {
-        call = 'OVERTAKE NOW';
-        action = 'OVERTAKE';
-      } else if (lap % 7 === 0) {
-        call = 'SAVE ENERGY';
-        action = 'CONSERVE';
+      } else if (histSnap?.recommendation) {
+        call = histSnap.recommendation.ui_label || 'PREPARE';
+        action = histSnap.recommendation.canonical_action || 'BUILD';
       }
 
       milestones.push({
@@ -65,30 +62,44 @@ export const DecisionTimeline: React.FC<DecisionTimelineProps> = ({
     return milestones;
   }, [currentLap, totalLaps, decisionHistory, events]);
 
-  // Demo bookmarks pointing to genuine historical moments
-  const demoBookmarks = [
-    {
-      id: 'DEV_WINDOW',
-      label: 'STATE A // DEVELOPING WINDOW',
-      sub: 'Lap 14 • P1: 4.5% vs P3: 18.5% • Call: PREPARE',
-      lap: 14,
-      tag: 'OPPORTUNITY DEVELOPING',
-    },
-    {
-      id: 'STRAT_WEAK',
-      label: 'STATE B // STRATEGICALLY WEAK',
-      sub: 'Lap 20 • P1: 38.2% • Stability: HIGH_RISK • Defending',
-      lap: 20,
-      tag: 'HIGH POST-PASS RISK',
-    },
-    {
-      id: 'RULE_BLOCKED',
-      label: 'STATE C // RULE / VSC INVALIDATION',
-      sub: 'Lap 28 • Neutralized Track • Call: WITHHELD',
-      lap: 28,
-      tag: 'REGULATION BLOCKED',
-    },
-  ];
+  // Demo bookmarks pointing to genuine replay states without hardcoded ML or outcome assertions
+  const demoBookmarks = React.useMemo(() => {
+    const rawBookmarks = [
+      {
+        id: 'DEV_WINDOW',
+        label: 'STATE A // REPLAY LAP 14',
+        lap: 14,
+        tag: 'HISTORICAL FORMATION',
+      },
+      {
+        id: 'STRAT_WEAK',
+        label: 'STATE B // REPLAY LAP 20',
+        lap: 20,
+        tag: 'TACTICAL APEX',
+      },
+      {
+        id: 'RULE_BLOCKED',
+        label: 'STATE C // REPLAY LAP 28',
+        lap: 28,
+        tag: 'REGULATION / TRACK STATE',
+      },
+    ];
+
+    return rawBookmarks.map((b) => {
+      const snap = decisionHistory?.find((h: any) => h.race?.lap === b.lap);
+      let sub = `Replay Lap ${b.lap} • Seek to load historical state`;
+      if (snap) {
+        const c = snap.published_call?.ui_call || snap.recommendation?.ui_label || 'ACTIVE';
+        const p1 = snap.overtake?.p_1_lap != null ? `${(snap.overtake.p_1_lap * 100).toFixed(1)}%` : '—';
+        const gap = snap.battle?.gap_seconds != null ? `${snap.battle.gap_seconds.toFixed(2)}s` : '—';
+        sub = `Recorded Lap ${b.lap} • Call: ${c} • P1: ${p1} • Gap: ${gap}`;
+      }
+      return {
+        ...b,
+        sub,
+      };
+    });
+  }, [decisionHistory]);
 
   return (
     <div className="decision-timeline-hero" aria-label="Hero Decision Timeline">

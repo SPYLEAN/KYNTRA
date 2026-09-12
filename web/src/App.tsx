@@ -247,6 +247,8 @@ export default function App() {
           watchlist={watchlist}
           onSelectBattle={selectBattle}
           currentWindow={selectedBattleId ? activeWindows[selectedBattleId] : null}
+          onOpenEvidence={handleOpenEvidence}
+          decisionHistory={decisionHistory}
         />
       ) : (
         /* SYSTEM Workspace */
@@ -254,6 +256,11 @@ export default function App() {
           systemStatus={systemStatus}
           wsConnected={connectionStatus === 'CONNECTED'}
           totalEventsCount={recentEvents.length}
+          onOpenEvidence={handleOpenEvidence}
+          operatingMode={operatingMode}
+          transportType={transportType}
+          latencyMs={latencyMs}
+          connectionStatus={connectionStatus}
         />
       )}
 
