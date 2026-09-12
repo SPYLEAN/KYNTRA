@@ -6594,7 +6594,7 @@ html, body, #root {
 
 .race-permanent-layout {
   display: grid;
-  grid-template-columns: 20% 52% 28%;
+  grid-template-columns: 18% 54% 28%;
   height: calc(100vh - 42px);
   max-height: calc(100vh - 42px);
   gap: 8px;
@@ -6602,6 +6602,75 @@ html, body, #root {
   background-color: var(--bg-root);
   overflow: hidden;
   box-sizing: border-box;
+}
+
+/* Connection Status and Stale Telemetry Badges */
+.item-conn-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+}
+
+.item-conn-status .conn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.conn-connected .conn-dot {
+  background-color: var(--color-safe);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+.conn-reconnecting .conn-dot {
+  background-color: var(--color-warning);
+  animation: pulse-warn 1.5s infinite ease-in-out;
+}
+
+.conn-stale .conn-dot {
+  background-color: var(--color-warning);
+}
+
+.conn-polling-fallback .conn-dot {
+  background-color: #64748B;
+}
+
+.conn-historical-replay .conn-dot {
+  background-color: var(--color-defender);
+}
+
+.conn-captured-live .conn-dot {
+  background-color: var(--color-safe);
+}
+
+.item-stale-alert {
+  background-color: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.text-stale {
+  color: var(--color-warning);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+
+.is-stale-workstation .stream-badge.stream-stale {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--color-warning);
+}
+
+.is-stale-workstation .stream-badge.stream-stale .stream-dot {
+  background-color: var(--color-warning);
+  box-shadow: none;
 }
 
 /* LEFT COLUMN: TIMING TOWER + BATTLE WATCHLIST */

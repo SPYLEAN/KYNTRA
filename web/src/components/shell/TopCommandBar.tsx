@@ -2,10 +2,16 @@ import React from 'react';
 import type { KyntraRuntimeSnapshot, RaceState, SystemHealthStatus } from '../../types';
 import { resolveSystemHealthDisplay, type OperatingMode } from '../../domain/types';
 
+import type { StreamConnectionStatus } from '../../hooks/useRuntimeStream';
+
 interface TopCommandBarProps {
   runtimeSnapshot: KyntraRuntimeSnapshot | null;
   raceState: RaceState | null;
   isStreaming: boolean;
+  connectionStatus?: StreamConnectionStatus;
+  isStale?: boolean;
+  transportType?: 'WS_STREAM' | 'HTTP_POLL';
+  latencyMs?: number | null;
   operatingMode: OperatingMode;
   onSelectOperatingMode: (mode: OperatingMode) => void;
   onOpenSessionSwitcher: () => void;
@@ -16,7 +22,11 @@ interface TopCommandBarProps {
 export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   runtimeSnapshot,
   raceState,
-  isStreaming,
+  isStreaming: _isStreaming,
+  connectionStatus = 'CONNECTED',
+  isStale = false,
+  transportType = 'WS_STREAM',
+  latencyMs: rawLatencyMs,
   operatingMode,
   onSelectOperatingMode,
   onOpenSessionSwitcher,
@@ -126,21 +136,30 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         </div>
       </div>
 
-      {/* 3. RIGHT ZONE: Source, Data Freshness, System Health, Stream Indicator */}
+      {/* 3. RIGHT ZONE: Connection Status, Latency, Data Freshness, System Health, Stream Indicator */}
       <div className="command-right-section">
-        {/* Source Feed Provenance */}
-        <div className="telemetry-compact-item item-source" title={`Active Feed Provenance: ${sourceMode}`}>
-          <span className="c-lbl text-muted">SRC:</span>
-          <span className="c-val mono-num font-bold text-secondary">{sourceMode}</span>
+        {/* Explicit Connection Status Badge */}
+        <div
+          className={`telemetry-compact-item item-conn-status conn-${connectionStatus.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+          title={`Active Connection State: ${connectionStatus}`}
+        >
+          <span className="conn-dot" />
+          <span className="c-val font-bold">{connectionStatus}</span>
         </div>
 
-        {/* Telemetry Age */}
-        <div className="telemetry-compact-item item-freshness" title="Telemetry Ingestion Freshness">
-          <span className="c-lbl text-muted">DATA:</span>
-          <span className="c-val mono-num font-bold text-secondary">
-            {dataAge ? `${dataAge}s` : '—'}
-          </span>
-        </div>
+        {/* Stale Alert or Latency */}
+        {isStale ? (
+          <div className="telemetry-compact-item item-stale-alert" title="Telemetry stream paused or delayed > 4s">
+            <span className="c-val font-bold text-stale">DATA STALE</span>
+          </div>
+        ) : (
+          <div className="telemetry-compact-item item-freshness" title="Telemetry round-trip latency & data age">
+            <span className="c-lbl text-muted">LAT:</span>
+            <span className="c-val mono-num font-bold text-secondary">
+              {rawLatencyMs != null ? `${rawLatencyMs}ms` : dataAge ? `${dataAge}s` : '—'}
+            </span>
+          </div>
+        )}
 
         {/* System Health Status */}
         <div
@@ -154,11 +173,11 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 
         {/* Live Stream Transport Indicator */}
         <div
-          className={`stream-badge font-bold ${isStreaming ? 'stream-live' : 'stream-polling'}`}
-          title={isStreaming ? 'Bidirectional WebSocket Streaming' : 'Polling REST Fallback Active'}
+          className={`stream-badge font-bold ${transportType === 'WS_STREAM' ? 'stream-live' : 'stream-polling'} ${isStale ? 'stream-stale' : ''}`}
+          title={transportType === 'WS_STREAM' ? 'Bidirectional WebSocket Streaming' : 'Polling REST Fallback Active'}
         >
           <span className="stream-dot" />
-          <span>{isStreaming ? 'STREAM' : 'POLLING'}</span>
+          <span>{transportType === 'WS_STREAM' ? 'WS STREAM' : 'HTTP POLL'}</span>
         </div>
 
         {/* Shortcuts Trigger */}

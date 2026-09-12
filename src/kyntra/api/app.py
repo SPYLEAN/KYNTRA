@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from kyntra.api.middleware import APITimingMiddleware
 from kyntra.api.routes import router
 from kyntra.api.stream import stream_router
 
@@ -14,14 +15,18 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Enable CORS for local dev servers
+# Enable CORS for local dev servers and expose diagnostic headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Response-Time"],
 )
+
+# API Execution Timing & Request Correlation Middleware
+app.add_middleware(APITimingMiddleware)
 
 # Include API routes
 app.include_router(router)

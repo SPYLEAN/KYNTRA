@@ -27,6 +27,8 @@ interface RaceWorkspaceProps {
   decisionHistory?: any[];
   trackStatus?: string;
   circuitName?: string;
+  isStale?: boolean;
+  connectionStatus?: string;
   onSelectBattle: (battleId: string) => void;
   onSelectCar?: (driver: string) => void;
   onOpenEvidence: (target: EvidenceInspectionTarget) => void;
@@ -43,6 +45,8 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
   decisionHistory = [],
   trackStatus = '1',
   circuitName = 'Monza',
+  isStale = false,
+  connectionStatus = 'CONNECTED',
   onSelectBattle,
   onSelectCar,
   onOpenEvidence,
@@ -77,16 +81,19 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
   const currentTracker = activeBattles.find((b) => b.battle_id === selectedBattleId) || null;
 
   return (
-    <div className="race-permanent-layout">
+    <div
+      className={`race-permanent-layout ${isStale ? 'is-stale-workstation' : ''}`}
+      data-connection-status={connectionStatus}
+    >
       {/* =========================================================================
-          COLUMN 1: LEFT (18–20%) — TIMING TOWER & BATTLE WATCHLIST
+          COLUMN 1: LEFT (18%) — TIMING TOWER & BATTLE WATCHLIST
           ========================================================================= */}
       <aside className="race-col-left" aria-label="Timing and Watchlist Sector">
         {/* Upper Left: Timing Tower */}
         <div className="left-panel-timing">
           <div className="panel-header-strip">
             <span className="panel-title font-bold">TIMING TOWER</span>
-            <ProvenanceChip type="LIVE" />
+            <ProvenanceChip type={isStale ? 'DEGRADED' : 'LIVE'} />
           </div>
           <div className="panel-content-scroll">
             <TimingTower
@@ -285,7 +292,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
               <div className="analytics-pane timeline-pane">
                 <div className="timeline-strip-list">
                   {decisionHistory.length === 0 ? (
-                    <div className="empty-text text-muted">No forensic decision records in timeline.</div>
+                    <div className="empty-text text-muted font-bold">INSUFFICIENT HISTORY</div>
                   ) : (
                     decisionHistory.slice(0, 5).map((d, i) => (
                       <div key={d.decision_id || i} className="timeline-micro-item">

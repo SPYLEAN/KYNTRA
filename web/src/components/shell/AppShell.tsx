@@ -12,12 +12,18 @@ import { EvidenceDrawer } from '../evidence/EvidenceDrawer';
 
 import type { OperatingMode } from '../../domain/types';
 
+import type { StreamConnectionStatus } from '../../hooks/useRuntimeStream';
+
 interface AppShellProps {
   currentContext: ContextWorkspace;
   onSelectContext: (ctx: ContextWorkspace) => void;
   runtimeSnapshot: KyntraRuntimeSnapshot | null;
   raceState: RaceState | null;
   isStreaming: boolean;
+  connectionStatus?: StreamConnectionStatus;
+  isStale?: boolean;
+  transportType?: 'WS_STREAM' | 'HTTP_POLL';
+  latencyMs?: number | null;
   operatingMode: OperatingMode;
   onSelectOperatingMode: (mode: OperatingMode) => void;
   evidenceTarget: EvidenceInspectionTarget | null;
@@ -33,6 +39,10 @@ export const AppShell: React.FC<AppShellProps> = ({
   runtimeSnapshot,
   raceState,
   isStreaming,
+  connectionStatus,
+  isStale,
+  transportType,
+  latencyMs,
   operatingMode,
   onSelectOperatingMode,
   evidenceTarget,
@@ -57,6 +67,10 @@ export const AppShell: React.FC<AppShellProps> = ({
         runtimeSnapshot={runtimeSnapshot}
         raceState={raceState}
         isStreaming={isStreaming}
+        connectionStatus={connectionStatus}
+        isStale={isStale}
+        transportType={transportType}
+        latencyMs={latencyMs}
         operatingMode={operatingMode}
         onSelectOperatingMode={onSelectOperatingMode}
         onOpenSessionSwitcher={onOpenSessionSwitcher}

@@ -1,17 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type {
-  ActiveBattleTracker,
-  BattleWatchlistItem,
   ContextWorkspace,
-  DecisionSnapshot,
   EvidenceInspectionTarget,
-  KyntraRuntimeSnapshot,
-  LiveUpdatePayload,
-  RaceEvent,
-  RaceState,
-  SystemStatus,
   TrackGeometry,
-  WindowState,
 } from './types';
 import { AppShell } from './components/shell/AppShell';
 import { RaceWorkspace } from './components/race/RaceWorkspace';
@@ -21,13 +12,16 @@ import { AnalysisWorkspace } from './components/workspaces/AnalysisWorkspace';
 import { SystemWorkspace } from './components/workspaces/SystemWorkspace';
 import { SessionSwitcher } from './components/SessionSwitcher';
 import { KyntraApiClient } from './api/client';
-import type { OperatingMode } from './domain/types';
+import { useRuntimeStream } from './hooks/useRuntimeStream';
 
 export default function App() {
   // Navigation & Workspace State: 5 Workspaces (RACE, STRATEGY, EVENTS, ANALYSIS, SYSTEM)
   const [currentContext, setCurrentContext] = useState<ContextWorkspace>('RACE');
-  const [operatingMode, setOperatingMode] = useState<OperatingMode>('LIVE');
-  const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
+
+  // Active event ID & Track Geometry
+  const [activeEventId, setActiveEventId] = useState<string>('2026_13_ITA');
+  const [trackGeometry, setTrackGeometry] = useState<TrackGeometry | null>(null);
+  const [decisionHistory, setDecisionHistory] = useState<any[]>([]);
 
   // Right-Side Universal Evidence Drawer Target
   const [evidenceTarget, setEvidenceTarget] = useState<EvidenceInspectionTarget | null>(null);
@@ -39,216 +33,66 @@ export default function App() {
   // Keyboard Shortcuts Modal
   const [shortcutsOpen, setShortcutsOpen] = useState<boolean>(false);
 
-  // Operational State
-  const [runtimeSnapshot, setRuntimeSnapshot] = useState<KyntraRuntimeSnapshot | null>(null);
-  const [raceState, setRaceState] = useState<RaceState | null>(null);
-  const [decision, setDecision] = useState<DecisionSnapshot | null>(null);
-  const [watchlist, setWatchlist] = useState<BattleWatchlistItem[]>([]);
-  const [activeBattles, setActiveBattles] = useState<ActiveBattleTracker[]>([]);
-  const [activeWindows, setActiveWindows] = useState<Record<string, WindowState>>({});
-  const [recentEvents, setRecentEvents] = useState<RaceEvent[]>([]);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
-  const [trackGeometry, setTrackGeometry] = useState<TrackGeometry | null>(null);
-  const [decisionHistory, setDecisionHistory] = useState<any[]>([]);
+  // 1. CANONICAL RUNTIME STATE OWNER (Phase 02 Architecture)
+  const {
+    runtimeSnapshot,
+    raceState,
+    decision,
+    watchlist,
+    activeBattles,
+    activeWindows,
+    recentEvents,
+    systemStatus,
+    operatingMode,
+    selectedBattleId,
+    connectionStatus,
+    transportType,
+    isStale,
+    latencyMs,
+    selectBattle,
+    setOperatingMode,
+    sendCommand,
+  } = useRuntimeStream(activeEventId);
 
-  // Active event ID
-  const [activeEventId, setActiveEventId] = useState<string>('2026_13_ITA');
   const eventId = runtimeSnapshot?.event_id || raceState?.session.event_id || activeEventId;
 
-  // Transport Control State
-  const [wsConnected, setWsConnected] = useState<boolean>(false);
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // 1. Fetch Track Geometry when event changes
+  // 2. Fetch Track Geometry when event changes
   useEffect(() => {
     let isMounted = true;
     KyntraApiClient.getTrackGeometry(eventId).then((geo) => {
       if (isMounted && geo) setTrackGeometry(geo);
     });
-
     return () => {
       isMounted = false;
     };
   }, [eventId]);
 
-  // 2. Initial System Status & Events History
+  // 3. Historical decision logs for Timeline
   useEffect(() => {
     let isMounted = true;
-    KyntraApiClient.getSystemStatus().then((status) => {
-      if (isMounted && status) setSystemStatus(status);
-    });
-
-    KyntraApiClient.getRecentEvents(50).then((evts) => {
-      if (isMounted && evts) setRecentEvents(evts);
-    });
-
     KyntraApiClient.getRuntimeHistory(undefined, 20).then((hist) => {
       if (isMounted && hist) setDecisionHistory(hist);
     });
-
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // 3. WebSocket Streaming Ingress with Auto-Reconnect
-  useEffect(() => {
-    let ws: WebSocket;
-
-    const connect = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/live`;
-
-      try {
-        ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          setWsConnected(true);
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data: LiveUpdatePayload = JSON.parse(event.data);
-            if (data.race_state) setRaceState(data.race_state);
-            if (data.decision) setDecision(data.decision);
-            if (data.watchlist) {
-              setWatchlist(data.watchlist);
-              if (!selectedBattleId && data.watchlist.length > 0) {
-                setSelectedBattleId(data.watchlist[0].battle_id);
-              }
-            }
-            if (data.active_windows) setActiveWindows(data.active_windows);
-            if (data.recent_events && data.recent_events.length > 0) {
-              setRecentEvents((prev) => {
-                const existingIds = new Set(prev.map((e) => e.event_id));
-                const newItems = data.recent_events.filter((e) => !existingIds.has(e.event_id));
-                return [...newItems, ...prev].slice(0, 100);
-              });
-            }
-          } catch (e) {
-            console.error('Error parsing live update:', e);
-          }
-        };
-
-        ws.onclose = () => {
-          setWsConnected(false);
-          reconnectTimeoutRef.current = setTimeout(connect, 2000);
-        };
-
-        ws.onerror = () => {
-          setWsConnected(false);
-        };
-      } catch (err) {
-        console.warn('WebSocket connection attempt failed:', err);
-        setWsConnected(false);
-        reconnectTimeoutRef.current = setTimeout(connect, 3000);
-      }
-    };
-
-    connect();
-
-    return () => {
-      if (wsRef.current) wsRef.current.close();
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-    };
-  }, [selectedBattleId]);
-
-  // 4. Canonical Runtime Orchestrator Polling (/api/runtime)
-  // Ensures full Strategy Matrix, Ranking, Published Call, and Health are continuously fresh
-  useEffect(() => {
-    const fetchRuntime = async () => {
-      const snap = await KyntraApiClient.getRuntimeSnapshot();
-      if (snap) {
-        setRuntimeSnapshot(snap);
-        // Contradiction A1: align operatingMode if backend is HISTORICAL_REPLAY
-        if (snap.mode === 'HISTORICAL_REPLAY' && operatingMode === 'LIVE') {
-          setOperatingMode('REPLAY');
-        } else if (snap.mode === 'LIVE_FEED' && operatingMode === 'REPLAY') {
-          setOperatingMode('LIVE');
-        }
-        if (snap.active_battles && snap.active_battles.length > 0) {
-          setActiveBattles(snap.active_battles);
-          if (!selectedBattleId) {
-            setSelectedBattleId(snap.selected_battle_id || snap.active_battles[0].battle_id);
-          }
-        }
-      }
-    };
-
-    fetchRuntime();
-    const interval = setInterval(fetchRuntime, 1000);
-    return () => clearInterval(interval);
-  }, [selectedBattleId, operatingMode]);
-
-  // Fallback REST polling if WebSocket is offline
-  useEffect(() => {
-    if (wsConnected) return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const [stateRes, decRes] = await Promise.all([
-          fetch('/api/live/state'),
-          fetch('/api/live/decision'),
-        ]);
-
-        if (stateRes.ok) {
-          const stateData: RaceState = await stateRes.json();
-          setRaceState(stateData);
-        }
-        if (decRes.ok) {
-          const decData: DecisionSnapshot = await decRes.json();
-          setDecision(decData);
-        }
-      } catch (err) {
-        console.warn('REST fallback poll failed:', err);
-      }
-    }, 1000);
-
-    return () => clearInterval(pollInterval);
-  }, [wsConnected]);
-
-  // Control Actions (WebSocket / REST)
-  const sendControl = useCallback(
-    (payload: Record<string, any>) => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(payload));
-      } else {
-        KyntraApiClient.sendRuntimeControl(payload as any).catch((err) =>
-          console.error('Control command failed:', err)
-        );
-      }
-    },
-    []
-  );
-
-  const handleSelectBattle = useCallback(
-    (battleId: string) => {
-      setSelectedBattleId(battleId);
-      sendControl({ action: 'select_battle', battle_id: battleId });
-    },
-    [sendControl]
-  );
-
-  const handleOpenEvidence = useCallback(
-    (target: EvidenceInspectionTarget) => {
-      setEvidenceTarget(target);
-    },
-    []
-  );
+  // Evidence Drawer handlers
+  const handleOpenEvidence = useCallback((target: EvidenceInspectionTarget) => {
+    setEvidenceTarget(target);
+  }, []);
 
   const handleCloseEvidence = useCallback(() => {
     setEvidenceTarget(null);
   }, []);
 
+  // Session Switcher handler
   const handleSelectEvent = useCallback(
     async (newEventId: string) => {
       setIsSessionLoading(true);
       setActiveEventId(newEventId);
-      setSelectedBattleId(null);
-      sendControl({ action: 'set_event', event_id: newEventId });
+      sendCommand({ action: 'set_event', event_id: newEventId });
 
       try {
         const geo = await KyntraApiClient.getTrackGeometry(newEventId);
@@ -260,7 +104,7 @@ export default function App() {
         setSessionSwitcherOpen(false);
       }
     },
-    [sendControl]
+    [sendCommand]
   );
 
   // Global Keyboard Shortcuts
@@ -278,10 +122,10 @@ export default function App() {
 
       if (e.code === 'Space') {
         e.preventDefault();
-        sendControl({ action: 'pause' });
+        sendCommand({ action: 'pause' });
       } else if (e.code === 'ArrowRight') {
         e.preventDefault();
-        sendControl({ action: 'step' });
+        sendCommand({ action: 'step' });
       } else if (e.code === 'Escape') {
         if (evidenceTarget) {
           setEvidenceTarget(null);
@@ -300,7 +144,31 @@ export default function App() {
         setCurrentContext('ANALYSIS');
       } else if (e.key === '5') {
         setCurrentContext('SYSTEM');
-      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      } else if (e.key === 'e' || e.key === 'E') {
+        if (evidenceTarget) {
+          setEvidenceTarget(null);
+        } else if (decision) {
+          const pub = (decision as any).published_call;
+          const rec = (decision as any).recommendation;
+          setEvidenceTarget({
+            title: `DECISION PROVENANCE: ${decision.decision_id || 'SNAPSHOT'}`,
+            value: pub?.ui_call || rec?.ui_label || 'ACTIVE RECOMMENDATION',
+            status: pub?.lifecycle_state === 'VALID' ? 'VALID' : 'CAUTION',
+            provenance: 'FROZEN MODEL',
+            method: '7-Point Atomic Final Publication Gate V1',
+            version: 'overtake_p123_v1.lgb',
+            timestamp: new Date().toISOString(),
+            evidenceItems: [
+              { label: 'Snapshot ID', value: decision.decision_id || 'N/A' },
+              { label: 'Lap', value: String(decision.race?.lap || 1) },
+              { label: 'Primary Basis', value: pub?.primary_reason || rec?.reason || 'Lexicographic Action Ranker' },
+              { label: 'Robustness', value: pub?.robustness || (rec?.robust ? 'ROBUST' : 'SENSITIVE') || 'UNKNOWN' },
+            ],
+            reasonCodes: pub?.reason_codes || [],
+            rawObject: decision as any,
+          });
+        }
+      } else if (e.key === '?') {
         setShortcutsOpen((prev) => !prev);
       }
     };
@@ -311,7 +179,8 @@ export default function App() {
     evidenceTarget,
     sessionSwitcherOpen,
     shortcutsOpen,
-    sendControl,
+    sendCommand,
+    decision,
   ]);
 
   return (
@@ -320,7 +189,11 @@ export default function App() {
       onSelectContext={setCurrentContext}
       runtimeSnapshot={runtimeSnapshot}
       raceState={raceState}
-      isStreaming={wsConnected}
+      isStreaming={connectionStatus === 'CONNECTED'}
+      connectionStatus={connectionStatus}
+      isStale={isStale}
+      transportType={transportType}
+      latencyMs={latencyMs}
       operatingMode={operatingMode}
       onSelectOperatingMode={setOperatingMode}
       evidenceTarget={evidenceTarget}
@@ -341,10 +214,12 @@ export default function App() {
           decisionHistory={decisionHistory}
           trackStatus={raceState?.track.track_status || '1'}
           circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || 'Monza'}
-          onSelectBattle={handleSelectBattle}
+          isStale={isStale}
+          connectionStatus={connectionStatus}
+          onSelectBattle={selectBattle}
           onSelectCar={(drv) => {
             const match = watchlist.find((w) => w.attacker === drv || w.defender === drv);
-            if (match) handleSelectBattle(match.battle_id);
+            if (match) selectBattle(match.battle_id);
           }}
           onOpenEvidence={handleOpenEvidence}
         />
@@ -356,21 +231,21 @@ export default function App() {
       ) : currentContext === 'EVENTS' ? (
         <EventsWorkspace
           events={recentEvents}
-          onJumpToLap={(lap) => sendControl({ action: 'seek', lap })}
+          onJumpToLap={(lap) => sendCommand({ action: 'seek', lap })}
         />
       ) : currentContext === 'ANALYSIS' ? (
         <AnalysisWorkspace
           decision={decision}
           selectedBattleId={selectedBattleId}
           watchlist={watchlist}
-          onSelectBattle={handleSelectBattle}
+          onSelectBattle={selectBattle}
           currentWindow={selectedBattleId ? activeWindows[selectedBattleId] : null}
         />
       ) : (
         /* SYSTEM Workspace */
         <SystemWorkspace
           systemStatus={systemStatus}
-          wsConnected={wsConnected}
+          wsConnected={connectionStatus === 'CONNECTED'}
           totalEventsCount={recentEvents.length}
         />
       )}
@@ -431,6 +306,10 @@ export default function App() {
                   <tr>
                     <td><kbd>5</kbd></td>
                     <td>SYSTEM &amp; Module Diagnostics</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>E</kbd></td>
+                    <td>Toggle Universal Forensic Evidence Drawer</td>
                   </tr>
                   <tr>
                     <td><kbd>ESC</kbd></td>
