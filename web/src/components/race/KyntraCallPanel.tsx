@@ -86,7 +86,7 @@ export const KyntraCallPanel: React.FC<KyntraCallPanelProps> = ({
       {/* 1. Header: Conclusion Identifier + Lifecycle Badge */}
       <div className="call-card-header">
         <div className="call-header-left">
-          <span className="call-section-title font-bold">KYNTRA CALL</span>
+          <span className="call-section-title font-bold">04. KYNTRA CALL</span>
           <span className="call-provenance-tag text-muted">FINAL PUBLICATION GATE</span>
         </div>
         <LifecycleBadge state={lifecycle} />

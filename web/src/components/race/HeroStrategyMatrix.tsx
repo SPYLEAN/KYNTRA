@@ -3,6 +3,7 @@ import type {
   EvidenceInspectionTarget,
   StrategyMatrixSnapshotData,
 } from '../../types';
+import { LexicographicRankTrace } from './LexicographicRankTrace';
 
 interface HeroStrategyMatrixProps {
   matrix: StrategyMatrixSnapshotData | null;
@@ -137,10 +138,10 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
               })}
             </tr>
 
-            {/* ROW 2: PASS CONTEXT (P1/P2/P3) */}
+            {/* ROW 2: PASS CONTEXT */}
             <tr className="matrix-row">
               <td className="row-axis-title font-bold">
-                02. PASS CONTEXT (H1/H2/H3)
+                02. PASS CONTEXT
                 <span className="axis-sub text-muted">LightGBM + Monotonic PAV</span>
               </td>
               {ACTION_COLS.map((col) => {
@@ -190,11 +191,11 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
               })}
             </tr>
 
-            {/* ROW 3: ENERGY BEFORE */}
+            {/* ROW 3: SIMULATED ENERGY BEFORE */}
             <tr className="matrix-row">
               <td className="row-axis-title font-bold">
-                03. ENERGY BEFORE
-                <span className="axis-sub text-muted">Starting Kinetic Buffer</span>
+                03. SIMULATED ENERGY BEFORE
+                <span className="axis-sub text-muted">Usable Kinetic Buffer</span>
               </td>
               {ACTION_COLS.map((col) => {
                 const e = actions[col.key]?.energy_accounting;
@@ -298,10 +299,10 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
               })}
             </tr>
 
-            {/* ROW 6: TERMINAL ENERGY */}
+            {/* ROW 6: TERMINAL SIMULATED ENERGY */}
             <tr className="matrix-row">
               <td className="row-axis-title font-bold">
-                06. TERMINAL ENERGY
+                06. TERMINAL SIMULATED ENERGY
                 <span className="axis-sub text-muted">End-of-Lap Reserve</span>
               </td>
               {ACTION_COLS.map((col) => {
@@ -421,10 +422,10 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
               })}
             </tr>
 
-            {/* ROW 9: PROJECTED POSITION */}
+            {/* ROW 9: PROJECTED POSITION / DURABILITY */}
             <tr className="matrix-row">
               <td className="row-axis-title font-bold">
-                09. PROJECTED POSITION
+                09. PROJECTED POSITION / DURABILITY
                 <span className="axis-sub text-muted">Track Order at Turn 1</span>
               </td>
               {ACTION_COLS.map((col) => {
@@ -548,6 +549,8 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
           </tbody>
         </table>
       </div>
+      {/* Lexicographic 6-Tier Hierarchical Rank Trace */}
+      <LexicographicRankTrace matrix={matrix} onOpenEvidence={onOpenEvidence} />
     </div>
   );
 };

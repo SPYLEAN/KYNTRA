@@ -219,7 +219,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
                   <div className="quad-item">
                     <span className="q-lbl text-muted">BATTLE CONTINUITY</span>
                     <span className="q-val font-bold mono-num">
-                      {currentTracker ? `${currentTracker.laps_active} LAPS` : '—'}
+                      {currentTracker?.laps_active != null ? `${currentTracker.laps_active} LAPS` : '1 LAP'}
                     </span>
                   </div>
                 </div>
@@ -319,7 +319,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
         <div className="right-panel-battle">
           <div className="panel-header-strip">
             <span className="panel-title font-bold">
-              {watchlist.some((w) => w.battle_id === selectedBattleId) ? 'ACTIVE BATTLE' : 'TRACKED BATTLE'}
+              01. {watchlist.some((w) => w.battle_id === selectedBattleId) ? 'ACTIVE BATTLE' : 'TRACKED BATTLE'}
             </span>
             <ProvenanceChip
               type={
@@ -381,7 +381,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
         {/* Sector 2: Overtake Horizon Strip (P1, P2, P3) */}
         <div className="right-panel-horizon">
           <div className="panel-header-strip">
-            <span className="panel-title font-bold">OVERTAKE HORIZON</span>
+            <span className="panel-title font-bold">02. OVERTAKE HORIZON</span>
             <ProvenanceChip type="FROZEN MODEL" />
           </div>
           <PassWindowStrip
@@ -393,10 +393,10 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
           />
         </div>
 
-        {/* Sector 3: Simulated Energy State (Authentic Technical Card) */}
+        {/* Sector 3: 03. ENERGY CONSEQUENCE (Simulated Energy + Inline Rule & Stability Consequence) */}
         <div className="right-panel-energy">
           <div className="panel-header-strip">
-            <span className="panel-title font-bold">SIMULATED ENERGY STATE</span>
+            <span className="panel-title font-bold">03. ENERGY CONSEQUENCE</span>
             <ProvenanceChip type="SIMULATED ENERGY" />
           </div>
           <div
@@ -414,6 +414,8 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
                   { label: 'Usable SoC Window', value: availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : 'UNAVAILABLE' },
                   { label: 'Lap Deployment Cap', value: '4.00 MJ (Regulation Cap)' },
                   { label: 'MGU-K Power Limit', value: '350 kW' },
+                  { label: 'Rule Eligibility', value: ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus || 'UNKNOWN' },
+                  { label: 'Stability V1', value: stabilityVerdict },
                 ],
               })
             }
@@ -435,71 +437,72 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
                 <span className="stat-sub text-muted">2026 TR</span>
               </div>
             </div>
+
+            {/* Inline Regulatory & Stability Summary */}
+            <div className="dual-status-grid energy-inline-rules" style={{ marginTop: '8px', marginBottom: '8px' }}>
+              <div
+                className="status-summary-item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenEvidence({
+                    title: 'FIA Sporting & Technical Regulations Compliance',
+                    value: ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus || 'UNKNOWN',
+                    status: ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL' ? 'VALID' : ruleStatus === 'UNKNOWN' ? 'UNKNOWN' : 'BLOCKED',
+                    provenance: 'RULE CHECK',
+                    method: 'Deterministic FIA 2026 Code C5.2.7 Check',
+                  });
+                }}
+                title="Click to inspect regulatory evidence"
+              >
+                <span className="item-label text-muted">RULE ELIGIBILITY</span>
+                <span
+                  className={`item-status-val font-bold ${
+                    ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL'
+                      ? 'text-valid'
+                      : ruleStatus === 'UNKNOWN'
+                      ? 'text-neutral'
+                      : 'text-blocked'
+                  }`}
+                >
+                  {ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus || 'UNKNOWN'}
+                </span>
+              </div>
+
+              <div
+                className="status-summary-item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenEvidence({
+                    title: 'Stability V1 Post-Pass Degradation Verdict',
+                    value: stabilityVerdict,
+                    status: stabilityVerdict === 'FAVORABLE' ? 'VALID' : stabilityVerdict === 'UNKNOWN' ? 'UNKNOWN' : 'CAUTION',
+                    provenance: 'ORDINAL STABILITY',
+                    method: 'Rank Conservation Metric',
+                  });
+                }}
+                title="Click to inspect stability evidence"
+              >
+                <span className="item-label text-muted">STABILITY V1</span>
+                <span
+                  className={`item-status-val font-bold ${
+                    stabilityVerdict === 'FAVORABLE'
+                      ? 'text-valid'
+                      : stabilityVerdict === 'UNKNOWN'
+                      ? 'text-neutral'
+                      : 'text-caution'
+                  }`}
+                >
+                  {stabilityVerdict}
+                </span>
+              </div>
+            </div>
+
             <div className="energy-context-footer">
               <span className="ctx-scenario text-secondary">
                 SCENARIO: <strong className="text-primary">Nominal 2026 TR</strong>
               </span>
               <span className="ctx-disclaimer text-muted">
                 SIMULATED — REGULATION CONSTRAINED
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Sector 4: Rule & Stability Summary (Compact 2-Column Grid) */}
-        <div className="right-panel-rules-stability">
-          <div className="dual-status-grid">
-            <div
-              className="status-summary-item clickable"
-              onClick={() =>
-                onOpenEvidence({
-                  title: 'FIA Sporting & Technical Regulations Compliance',
-                  value: ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus,
-                  status: ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL' ? 'VALID' : ruleStatus === 'UNKNOWN' ? 'UNKNOWN' : 'BLOCKED',
-                  provenance: 'RULE CHECK',
-                  method: 'Deterministic FIA 2026 Code C5.2.7 Check',
-                })
-              }
-              title="Click to inspect regulatory evidence"
-            >
-              <span className="item-label text-muted">RULE ELIGIBILITY</span>
-              <span
-                className={`item-status-val font-bold ${
-                  ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL'
-                    ? 'text-valid'
-                    : ruleStatus === 'UNKNOWN'
-                    ? 'text-neutral'
-                    : 'text-blocked'
-                }`}
-              >
-                {ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus}
-              </span>
-            </div>
-
-            <div
-              className="status-summary-item clickable"
-              onClick={() =>
-                onOpenEvidence({
-                  title: 'Stability V1 Post-Pass Degradation Verdict',
-                  value: stabilityVerdict,
-                  status: stabilityVerdict === 'FAVORABLE' ? 'VALID' : stabilityVerdict === 'UNKNOWN' ? 'UNKNOWN' : 'CAUTION',
-                  provenance: 'ORDINAL STABILITY',
-                  method: 'Rank Conservation Metric',
-                })
-              }
-              title="Click to inspect stability evidence"
-            >
-              <span className="item-label text-muted">STABILITY V1</span>
-              <span
-                className={`item-status-val font-bold ${
-                  stabilityVerdict === 'FAVORABLE'
-                    ? 'text-valid'
-                    : stabilityVerdict === 'UNKNOWN'
-                    ? 'text-neutral'
-                    : 'text-caution'
-                }`}
-              >
-                {stabilityVerdict}
               </span>
             </div>
           </div>

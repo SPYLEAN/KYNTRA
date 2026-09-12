@@ -82,6 +82,8 @@ def get_circuit_geometry(event_id: str) -> Dict[str, Any]:
             svg_path = "M 200 300 L 800 300 Z"
 
         geo = {
+            "available": True,
+            "is_fallback": False,
             "event_id": event_id,
             "circuit_name": EVENT_INFO[event_id]["circuit"],
             "view_box": "0 0 1000 600",
@@ -103,13 +105,12 @@ def get_circuit_geometry(event_id: str) -> Dict[str, Any]:
 
 
 def _build_fallback_geometry(event_id: str) -> Dict[str, Any]:
-    """Fallback stadium oval track if parquet parsing fails."""
-    # Rounded stadium track
+    """Fallback geometry marked as unavailable when parquet parsing fails."""
+    # Retain parametric points for coordinate interpolation safety if called, but flag unavailable
     svg_path = "M 200 150 L 800 150 A 150 150 0 0 1 800 450 L 200 450 A 150 150 0 0 1 200 150 Z"
     points = []
     for i in range(100):
         frac = i / 100.0
-        # Simple parametric approximation
         if frac < 0.35:
             x = 200.0 + (frac / 0.35) * 600.0
             y = 150.0
@@ -127,6 +128,9 @@ def _build_fallback_geometry(event_id: str) -> Dict[str, Any]:
         points.append({"x": round(x, 1), "y": round(y, 1), "progress": round(frac, 4)})
 
     return {
+        "available": False,
+        "is_fallback": True,
+        "message": "CIRCUIT GEOMETRY UNAVAILABLE — Telemetry positional channels missing.",
         "event_id": event_id,
         "circuit_name": EVENT_INFO.get(event_id, {}).get("circuit", "Circuit"),
         "view_box": "0 0 1000 600",

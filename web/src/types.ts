@@ -250,6 +250,8 @@ export interface TrackPoint {
 }
 
 export interface TrackGeometry {
+  available?: boolean;
+  is_fallback?: boolean;
   event_id: string;
   circuit_name: string;
   view_box: string;
@@ -258,6 +260,7 @@ export interface TrackGeometry {
   sector_markers: { sector: number; progress: number }[];
   activation_line_progress: number;
   detection_line_progress: number;
+  message?: string;
 }
 
 export interface LiveUpdatePayload {

@@ -39,7 +39,7 @@ export const RobustnessPanel: React.FC<RobustnessPanelProps> = ({
     >
       <div className="robustness-header">
         <span className="r-title font-bold">SCENARIO ROBUSTNESS</span>
-        <span className="r-sub text-muted">3 BATTERY ASSUMPTIONS</span>
+        <span className="r-sub text-muted">3 TESTED ENERGY SCENARIOS</span>
       </div>
 
       <div className="scenario-winners-row">

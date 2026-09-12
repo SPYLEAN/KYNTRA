@@ -28,12 +28,12 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
       {/* Top Strategic Overview Bar */}
       <div className="strategy-top-header">
         <div className="header-text-group">
-          <span className="eyebrow-tag text-accent font-bold">TACTICAL STRATEGY BRAIN</span>
+          <span className="eyebrow-tag text-accent font-bold">STRATEGY OS</span>
           <h2 className="header-title font-bold">
-            STRATEGIST MATRIX &amp; LEXICOGRAPHIC RANKING DEEP DIVE
+            STRATEGIST MATRIX &amp; LEXICOGRAPHIC RANKING
           </h2>
           <p className="header-sub text-muted">
-            Evaluating 4 candidate actions (CONSERVE, BUILD, DEPLOY, OVERTAKE) from an identical, synchronized source state.
+            Evaluating 4 canonical actions (SAVE ENERGY, PREPARE, APPLY PRESSURE, OVERTAKE NOW) with 6-tier lexicographic ranking.
           </p>
         </div>
       </div>

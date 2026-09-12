@@ -9,18 +9,18 @@ interface WhyWhyNotPanelProps {
 }
 
 const TOKEN_PHRASES: Record<string, string> = {
-  RULE_RESTRICTION: 'FIA sporting regulation restriction active (SC/VSC/Flag)',
-  ENERGY_INFEASIBILITY: 'MGU-K energy deficit for planned deployment',
-  POST_PASS_INSTABILITY: 'High post-pass counter-attack risk detected',
-  FUTURE_WINDOW_DOMINANCE: 'Superior forward attack window available next lap',
-  REAR_THREAT: 'Immediate rear traffic pressure behind attacker',
-  KINEMATIC_OPPORTUNITY_DEFICIT: 'Insufficient kinematic closing speed delta',
-  ENERGY_SENSITIVITY: 'Strategy outcome sensitive to recovery scenario',
-  INSUFFICIENT_INFORMATION: 'Incomplete telemetry feature set for confident pass',
-  STRATEGY_TIE: 'Co-equal strategic ranking tier evaluation',
-  DOMINATED_ACTION: 'Lower ranked across lexicographic tiers',
-  EXCLUDED_BY_RULE: 'Prohibited by active track status and sporting rules',
-  HIGH_RISK_POST_PASS: 'Position durability evaluated as HIGH_RISK',
+  POST_PASS_INSTABILITY: 'High post-pass risk',
+  FUTURE_WINDOW_DOMINANCE: 'Stronger future opportunity',
+  ENERGY_INFEASIBILITY: 'Insufficient simulated energy',
+  RULE_RESTRICTION: 'Restricted by current rule state',
+  ENERGY_SENSITIVITY: 'Decision changes across tested energy scenarios',
+  STRATEGY_TIE: 'No dominant strategy',
+  REAR_THREAT: 'Immediate rear traffic pressure',
+  KINEMATIC_OPPORTUNITY_DEFICIT: 'Insufficient closing delta',
+  INSUFFICIENT_INFORMATION: 'Incomplete feature set for pass',
+  DOMINATED_ACTION: 'Dominated in lexicographic hierarchy',
+  EXCLUDED_BY_RULE: 'Restricted by current rule state',
+  HIGH_RISK_POST_PASS: 'High post-pass risk',
 };
 
 export const WhyWhyNotPanel: React.FC<WhyWhyNotPanelProps> = ({
@@ -60,7 +60,7 @@ export const WhyWhyNotPanel: React.FC<WhyWhyNotPanelProps> = ({
   return (
     <div className="why-why-not-panel" aria-label="Strategy Rationale and Exclusions">
       <div className="why-panel-header">
-        <span className="panel-title font-bold">RATIONALE &amp; EXCLUSIONS</span>
+        <span className="panel-title font-bold">05. DECISION RATIONALE</span>
         <span className="panel-sub text-muted">DETERMINISTIC BASIS</span>
       </div>
 
