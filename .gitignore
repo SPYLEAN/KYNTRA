@@ -84,3 +84,6 @@ logs/
 # Python tooling
 .pyright/
 .pyre/
+
+# Reference repositories (Phase 01.6)
+_reference/
