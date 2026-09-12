@@ -20,108 +20,106 @@ export const KyntraCallPanel: React.FC<KyntraCallPanelProps> = ({
   const lifecycle = (publishedCall?.lifecycle_state || callLifecycle || 'WITHHELD').toUpperCase();
   const isValid = lifecycle === 'VALID' || lifecycle === 'AGING';
 
-  // Strategic UI Call headline
-  let uiCallText = 'NO DOMINANT STRATEGY';
+  // Strategic Headline & Metadata
+  let headlineCall = 'NO DOMINANT STRATEGY';
   let backendAction = 'NONE';
-  let reason = publishedCall?.primary_reason || 'EVALUATING PIT-WALL STRATEGY';
+  let primaryBasis = publishedCall?.primary_reason || 'Evaluating pit-wall strategy options.';
 
   if (isValid && publishedCall) {
-    uiCallText = publishedCall.ui_call;
+    headlineCall = publishedCall.ui_call;
     backendAction = publishedCall.backend_action;
   } else if (lifecycle === 'PENDING_FINAL_GATE') {
-    uiCallText = candidateCall?.ui_call || 'PENDING FINAL GATE';
-    backendAction = candidateCall?.canonical_action || 'EVALUATING';
-    reason = 'Candidate recommendation pending 7-point safety & staleness gate';
+    // CRITICAL: Candidate PENDING_FINAL_GATE must never visually appear as a published call
+    headlineCall = 'PENDING FINAL GATE';
+    backendAction = candidateCall?.canonical_action ? `CANDIDATE: ${candidateCall.canonical_action}` : 'EVALUATING';
+    primaryBasis = 'Candidate recommendation undergoing 7-point safety & staleness gate verification.';
   } else if (lifecycle === 'WITHHELD') {
-    uiCallText = 'WITHHELD';
-    reason = publishedCall?.primary_reason || 'Gate withheld call due to high risk or rule checks';
+    headlineCall = 'CALL WITHHELD';
+    backendAction = publishedCall?.backend_action || 'WITHHELD';
+    primaryBasis = publishedCall?.primary_reason || 'Gate withheld recommendation due to safety or rule bounds.';
   } else if (lifecycle === 'BLOCKED') {
-    uiCallText = 'BLOCKED';
-    reason = publishedCall?.primary_reason || 'Track neutralized or sporting regulation violation';
+    headlineCall = 'CALL BLOCKED';
+    backendAction = publishedCall?.backend_action || 'BLOCKED';
+    primaryBasis = publishedCall?.primary_reason || 'Sporting regulation violation or neutralized track status.';
   } else if (lifecycle === 'EXPIRED') {
-    uiCallText = 'CALL EXPIRED';
-    reason = 'Staleness threshold exceeded without fresh race telemetry';
+    headlineCall = 'CALL EXPIRED';
+    backendAction = publishedCall?.backend_action || 'EXPIRED';
+    primaryBasis = 'Telemetry staleness budget exceeded without fresh race data.';
   } else if (lifecycle === 'INVALIDATED') {
-    uiCallText = 'INVALIDATED';
-    reason = 'Tactical parameters diverged from publication preconditions';
+    headlineCall = 'CALL INVALIDATED';
+    backendAction = publishedCall?.backend_action || 'INVALIDATED';
+    primaryBasis = 'Preconditions diverged from active race state.';
   }
 
-  const decId = publishedCall?.decision_snapshot_id || decisionSnapshotId || 'DEC_FORENSIC_STANDBY';
-  const pubTime = publishedCall?.published_at
-    ? new Date(publishedCall.published_at).toLocaleTimeString()
-    : 'STANDBY';
+  const decId = publishedCall?.decision_snapshot_id || decisionSnapshotId || 'FORENSIC_STANDBY';
+  const robustness = publishedCall?.robustness || 'ROBUST WITHIN TESTED ASSUMPTIONS';
 
   return (
-    <div className={`kyntra-call-hero-card lifecycle-style-${lifecycle.toLowerCase()}`}>
-      {/* Upper Status & Badge Line */}
-      <div className="call-hero-topline">
-        <div className="call-brand-pill mono">
-          <img
-            src="/brand/kyntra-symbol-ui.png"
-            alt="KYNTRA"
-            className="call-symbol"
-          />
-          <span className="font-bold">KYNTRA CALL</span>
+    <div
+      className={`kyntra-call-card-redesign lifecycle-state-${lifecycle.toLowerCase()} clickable`}
+      onClick={() =>
+        onOpenEvidence({
+          title: `KYNTRA Decision Record — ${decId}`,
+          value: headlineCall,
+          status: isValid ? 'VALID' : lifecycle === 'PENDING_FINAL_GATE' ? 'CAUTION' : 'BLOCKED',
+          provenance: 'DERIVED',
+          method: '7-Point Atomic Final Publication Gate V1',
+          timestamp: publishedCall?.published_at,
+          reasonCodes: publishedCall?.reason_codes,
+          configIdentities: {
+            'Decision Snapshot ID': decId,
+            'Lifecycle State': lifecycle,
+            'Backend Action': backendAction,
+            'Staleness Limit': `${publishedCall?.staleness_threshold_s ?? 4.0}s`,
+          },
+          evidenceItems: [
+            { label: 'Published Action', value: headlineCall },
+            { label: 'Lifecycle Status', value: lifecycle },
+            { label: 'Primary Basis', value: primaryBasis },
+            { label: 'Robustness', value: robustness },
+          ],
+        })
+      }
+      title="Click to inspect cryptographic DecisionSnapshot record"
+      aria-label="Published KYNTRA Strategy Decision"
+    >
+      {/* 1. Header: Conclusion Identifier + Lifecycle Badge */}
+      <div className="call-card-header">
+        <div className="call-header-left">
+          <span className="call-section-title font-bold">KYNTRA CALL</span>
+          <span className="call-provenance-tag text-muted">FINAL PUBLICATION GATE</span>
         </div>
         <LifecycleBadge state={lifecycle} />
       </div>
 
-      {/* Main Giant Call Display */}
-      <div className="call-main-headline-block">
-        <div className="call-massive-label font-bold tracking-tight">
-          {uiCallText}
+      {/* 2. Hero Headline (Major Decision Typography: 24-28px, No Neon Glow) */}
+      <div className="call-card-headline-zone">
+        <div className="call-hero-title font-bold">
+          {headlineCall}
         </div>
-        <div className="call-backend-sub mono text-secondary">
-          ACTION: <strong className="text-primary font-bold">{backendAction}</strong>
+        <div className="call-metadata-line text-secondary">
+          <span className="meta-item">
+            ACTION: <strong className="text-primary">{backendAction}</strong>
+          </span>
+          <span className="meta-sep">&bull;</span>
+          <span className="meta-item text-muted">
+            ROBUSTNESS: <span className="text-secondary">{robustness}</span>
+          </span>
         </div>
       </div>
 
-      {/* Operational Rationale / Reason */}
-      <div className="call-reason-box mono">
-        <span className="reason-lbl text-muted">PRIMARY BASIS:</span>
-        <span className="reason-text text-secondary">{reason}</span>
+      {/* 3. Primary Basis & Rationale (Clean readable phrases) */}
+      <div className="call-basis-box">
+        <span className="basis-label text-muted">PRIMARY BASIS:</span>
+        <span className="basis-text text-secondary">{primaryBasis}</span>
       </div>
 
-      {/* Forensic Metadata Strip */}
-      <div className="call-forensic-strip mono text-muted">
-        <div
-          className="forensic-item clickable"
-          onClick={() =>
-            onOpenEvidence({
-              title: `Decision Snapshot — ${decId}`,
-              value: uiCallText,
-              status: isValid ? 'VALID' : 'BLOCKED',
-              provenance: 'DERIVED',
-              method: '7-Point Final Publication Gate V1',
-              timestamp: publishedCall?.published_at,
-              reasonCodes: publishedCall?.reason_codes,
-              configIdentities: {
-                'Decision Snapshot ID': decId,
-                'Call ID': publishedCall?.call_id || 'STANDBY',
-                'Staleness Threshold': `${publishedCall?.staleness_threshold_s ?? 4.0}s`,
-                'Lifecycle State': lifecycle,
-              },
-            })
-          }
-          title="Click to inspect decision forensic record"
-        >
-          <span className="f-lbl">DECISION ID:</span>
-          <span className="f-val text-accent font-bold">{decId.slice(0, 18)}...</span>
-        </div>
-
-        <div className="forensic-item">
-          <span className="f-lbl">PUBLISHED:</span>
-          <span className="f-val text-secondary">{pubTime}</span>
-        </div>
-
-        {publishedCall?.robustness && (
-          <div className="forensic-item">
-            <span className="f-lbl">ROBUSTNESS:</span>
-            <span className="f-val text-primary font-bold">
-              {publishedCall.robustness.replace(/_/g, ' ')}
-            </span>
-          </div>
-        )}
+      {/* 4. Forensic Snapshot ID Footer */}
+      <div className="call-footer-row text-muted">
+        <span className="footer-lbl">DECISION ID:</span>
+        <span className="footer-id mono-num text-secondary">
+          {decId.length > 24 ? `${decId.slice(0, 24)}...` : decId}
+        </span>
       </div>
     </div>
   );

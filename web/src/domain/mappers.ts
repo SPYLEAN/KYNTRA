@@ -466,9 +466,30 @@ export function mapStrategyMatrix(
 // 8. PUBLISHED CALL MAPPER
 // ============================================================================
 
+export function sanitizeRationale(reasons: string[], ruleStatus?: string | null): string[] {
+  const isRuleUnknown = !ruleStatus || ruleStatus === 'UNKNOWN';
+  return reasons.map((reason) => {
+    if (isRuleUnknown) {
+      const lower = reason.toLowerCase();
+      if (
+        lower.includes('regulatory clearance confirmed') ||
+        lower.includes('clearance confirmed') ||
+        lower.includes('legal') ||
+        lower.includes('compliant') ||
+        lower.includes('meets all regulatory') ||
+        lower.includes('rule passed')
+      ) {
+        return 'Regulatory evaluation UNKNOWN (sporting clearance unverified)';
+      }
+    }
+    return reason;
+  });
+}
+
 export function mapPublishedCall(
   callData: PublishedCallSnapshotData | null,
-  decision: DecisionSnapshot | null
+  decision: DecisionSnapshot | null,
+  ruleStatus?: string | null
 ): KyntraCall | null {
   const raw = callData || (decision?.published_call as any);
   if (!raw && !decision?.recommendation) return null;
@@ -481,6 +502,9 @@ export function mapPublishedCall(
     OVERTAKE: 'OVERTAKE NOW',
   };
 
+  const rawWhy = raw?.why_selected || decision?.recommendation?.why || [];
+  const sanitizedWhy = sanitizeRationale(rawWhy, ruleStatus || decision?.compliance?.status);
+
   return {
     decision_id: decision?.decision_id || raw?.decision_id || 'CALL_SNAPSHOT_ID',
     canonical_action: canonicalAction,
@@ -489,7 +513,7 @@ export function mapPublishedCall(
     published_at: raw?.published_at || null,
     valid_until: raw?.valid_until || null,
     remaining_seconds: raw?.remaining_seconds ?? null,
-    why_selected: raw?.why_selected || decision?.recommendation?.why || [],
+    why_selected: sanitizedWhy,
     why_not: (raw?.why_not as any) || {},
     scenario_winners: (raw?.scenario_winners as any) || {},
     robustness: raw?.robustness || 'ROBUST WITHIN TESTED ASSUMPTIONS',

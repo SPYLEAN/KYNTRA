@@ -27,33 +27,31 @@ export const BattleWatchlistPanel: React.FC<BattleWatchlistPanelProps> = ({
     }
   };
 
-  const getWindowBadgeClass = (windowState?: string | null) => {
-    switch (windowState) {
-      case 'PEAKING':
-        return 'window-peaking';
-      case 'FORMING':
-        return 'window-forming';
-      case 'FADING':
-        return 'window-fading';
-      case 'STABLE':
-        return 'window-stable';
-      default:
-        return 'window-unknown';
-    }
-  };
-
   return (
-    <div className="battle-watchlist-panel">
-      <div className="panel-header-simple" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>Active Battle Watchlist</span>
-        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-          {watchlist.length} CANDIDATES DISCOVERED
+    <div className="battle-watchlist-panel" aria-label="Battle Watchlist">
+      {/* Header with Candidates Count */}
+      <div className="watchlist-header-bar">
+        <span className="watchlist-title font-bold">BATTLE WATCH</span>
+        <span className="candidates-count text-muted mono-num">
+          {watchlist.length} DETECTED PROXIMITY CANDIDATES
         </span>
       </div>
 
+      {/* When 0 live candidates exist, display concise truth state + tracked battle link if present */}
       {watchlist.length === 0 ? (
-        <div className="empty-watchlist-msg">
-          No active battles within proximity threshold (&le; 2.5s). Field spread out.
+        <div className="watchlist-empty-state">
+          <div className="empty-notice text-muted">
+            0 live proximity candidates (&le;2.5s). Field spread out.
+          </div>
+          {selectedBattleId && (
+            <div className="tracked-session-row">
+              <span className="tracked-tag font-bold text-secondary">TRACKED BATTLE:</span>
+              <span className="tracked-code font-bold text-primary mono-num">
+                {selectedBattleId}
+              </span>
+              <span className="tracked-prov text-muted">[SESSION / REPLAY]</span>
+            </div>
+          )}
         </div>
       ) : (
         <div className="watchlist-table-wrapper">
@@ -62,10 +60,8 @@ export const BattleWatchlistPanel: React.FC<BattleWatchlistPanelProps> = ({
               <tr>
                 <th>PRIORITY</th>
                 <th>ENGAGEMENT</th>
-                <th>POS</th>
                 <th>GAP</th>
                 <th>TREND</th>
-                <th title="Qualitative Trajectory Heuristic — Not an ML Probability">WINDOW (HEURISTIC)</th>
                 <th>RULE</th>
               </tr>
             </thead>
@@ -84,14 +80,11 @@ export const BattleWatchlistPanel: React.FC<BattleWatchlistPanelProps> = ({
                       </span>
                     </td>
                     <td className="battle-engagement-cell">
-                      <span className="att-code">{item.attacker}</span>
-                      <span className="arrow">&rarr;</span>
-                      <span className="def-code">{item.defender}</span>
+                      <span className="att-code text-threat font-bold">{item.attacker}</span>
+                      <span className="arrow text-muted">&rarr;</span>
+                      <span className="def-code text-target font-bold">{item.defender}</span>
                     </td>
-                    <td className="mono text-muted">
-                      {item.attacker_position ? `P${item.attacker_position}` : '-'} / {item.defender_position ? `P${item.defender_position}` : '-'}
-                    </td>
-                    <td className="mono font-bold">
+                    <td className="gap-cell mono-num font-bold">
                       {item.gap_seconds !== null && item.gap_seconds !== undefined
                         ? `${item.gap_seconds.toFixed(2)}s`
                         : '—'}
@@ -104,12 +97,7 @@ export const BattleWatchlistPanel: React.FC<BattleWatchlistPanelProps> = ({
                       </span>
                     </td>
                     <td>
-                      <span className={`window-badge ${getWindowBadgeClass(item.window_state)}`}>
-                        {item.window_state || 'UNKNOWN'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={item.compliance_status === 'LEGAL' ? 'text-legal' : 'text-blocked'}>
+                      <span className={item.compliance_status === 'LEGAL' ? 'text-valid' : 'text-blocked'}>
                         {item.compliance_status === 'LEGAL' ? '✓ LEGAL' : '✕ BLK'}
                       </span>
                     </td>

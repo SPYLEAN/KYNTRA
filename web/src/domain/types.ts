@@ -91,6 +91,51 @@ export interface FreshnessState {
 
 export type SystemHealthStatus = 'OPERATIONAL' | 'DEGRADED' | 'DECISION_BLOCKED' | 'OFFLINE';
 
+export type SystemHealthDisplayStatus =
+  | 'OPERATIONAL'
+  | 'DEGRADED — NON-BLOCKING'
+  | 'DECISION_BLOCKED'
+  | 'OFFLINE';
+
+export function resolveSystemHealthDisplay(
+  healthStatus: SystemHealthStatus,
+  modules?: Record<string, { status: string }> | null
+): SystemHealthDisplayStatus {
+  if (healthStatus === 'OPERATIONAL') return 'OPERATIONAL';
+  if (healthStatus === 'OFFLINE') return 'OFFLINE';
+  if (healthStatus === 'DECISION_BLOCKED') return 'DECISION_BLOCKED';
+
+  // Coarse DEGRADED: check if critical decision modules are degraded
+  const criticalModules = [
+    'features',
+    'ml_inference',
+    'overtake_model',
+    'energy_sim',
+    'energy_engine',
+    'rule_engine',
+    'regulation_engine',
+    'stability',
+    'stability_engine',
+    'strategy_matrix',
+    'strategy_brain',
+    'publication',
+    'publication_gate',
+  ];
+
+  if (modules) {
+    const hasCriticalDegraded = Object.entries(modules).some(
+      ([name, mod]) =>
+        criticalModules.includes(name) &&
+        (mod.status === 'DEGRADED' || mod.status === 'FAILED' || mod.status === 'DECISION_BLOCKED')
+    );
+    if (hasCriticalDegraded) {
+      return 'DECISION_BLOCKED';
+    }
+  }
+
+  return 'DEGRADED — NON-BLOCKING';
+}
+
 export interface ModuleHealth {
   status: SystemHealthStatus;
   latency_ms?: number | null;

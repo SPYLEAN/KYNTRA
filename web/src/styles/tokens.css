@@ -1,61 +1,91 @@
 /* ==========================================================================
-   KYNTRA MOTORSPORT OPERATIONS DESIGN SYSTEM (TOKENS)
-   Formula 1 Pit-Wall + Bloomberg Terminal + Aerospace Mission Control
+   KYNTRA MOTORSPORT OPERATIONS DESIGN SYSTEM (TOKENS) — PHASE 01.5
+   Elite Race-Operations Workstation + Mission-Control Software
+   Calm, mature engineering product with high readability and functional color
    ========================================================================== */
 
 :root {
-  /* Surface / Background Hierarchy */
-  --bg-root: #07090C;
-  --bg-panel: #0B0E12;
-  --bg-elevated: #10141A;
-  --bg-active: #151A21;
-  --bg-card: #0E1218;
-  --bg-card-hover: #141922;
-  --bg-inset: #050709;
+  /* Surface / Neutral Background Hierarchy */
+  --bg-root: #090B0E;
+  --bg-surface: #101318;
+  --bg-panel: #101318;
+  --bg-elevated: #15191E;
+  --bg-active: #1A1F25;
+  --bg-card: #12161C;
+  --bg-card-hover: #171C23;
+  --bg-inset: #07090C;
 
-  /* Operational Borders */
-  --border-subtle: #222832;
-  --border-strong: #343C48;
-  --border-active: #485466;
+  /* Subtle dividers replacing heavy borders */
+  --divider: rgba(255, 255, 255, 0.08);
+  --divider-strong: rgba(255, 255, 255, 0.14);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-active: rgba(255, 255, 255, 0.22);
   --border-accent: #38bdf8;
 
-  /* Typography / Text Palette */
-  --text-primary: #F4F6F8;
-  --text-secondary: #AAB2BF;
-  --text-muted: #707988;
-  --text-inverse: #07090C;
+  /* Restrained Typography Palette */
+  --text-primary: #F2F4F5;
+  --text-secondary: #A2A9B2;
+  --text-muted: #69727E;
+  --text-inverse: #090B0E;
 
-  /* Restrained Functional Accents */
-  --accent-model: #38bdf8;       /* cyan / blue: frozen model & ML inference */
-  --accent-model-dim: rgba(56, 189, 248, 0.12);
-  --status-valid: #10b981;       /* green: legal / permitted / valid call */
+  /* Functional Semantic Colors (Restrained, Not Neon) */
+  --color-attacker: #E05252;       /* Restrained red: attacker / threat */
+  --color-attacker-dim: rgba(224, 82, 82, 0.12);
+  --color-defender: #38BDF8;       /* Restrained cyan / sky: defender / target */
+  --color-defender-dim: rgba(56, 189, 248, 0.12);
+
+  --status-allowed: #10B981;        /* Muted green: valid / healthy / allowed */
+  --status-allowed-dim: rgba(16, 185, 129, 0.12);
+  --status-valid: #10B981;
   --status-valid-dim: rgba(16, 185, 129, 0.12);
-  --status-caution: #f59e0b;     /* amber: aging / caution / energy sensitivity */
+
+  --status-caution: #F59E0B;        /* Muted amber: caution / aging / energy sensitive */
   --status-caution-dim: rgba(245, 158, 11, 0.12);
-  --status-blocked: #ef4444;     /* red: blocked / high risk / rule violation */
+
+  --status-blocked: #EF4444;        /* Controlled red: blocked / critical / invalid */
   --status-blocked-dim: rgba(239, 68, 68, 0.12);
-  --status-neutral: #64748b;     /* gray: unknown / unavailable / withheld */
+
+  --status-neutral: #64748B;        /* Neutral gray: unknown / unavailable */
   --status-neutral-dim: rgba(100, 116, 139, 0.12);
 
+  /* Brand Blue (Restrained and Sparse) */
+  --brand-blue: #2563EB;
+  --brand-blue-dim: rgba(37, 99, 235, 0.15);
+
   /* Typography Scale */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Spacing Scale (4, 8, 12, 16, 20, 24, 32) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
 
   /* Layout Spacing Constants */
   --header-height: 42px;
-  --left-rail-width: 64px;
-  --bottom-bar-height: 38px;
-  --inspector-width: 440px;
+  --left-rail-width: 68px;
+  --bottom-bar-height: 36px;
+  --inspector-width: 420px;
 }
 
-/* Tabular Numerals and Dense Motorsport Utilities */
+/* Tabular Numerals for Changing Telemetry */
 .mono-num {
   font-family: var(--font-mono);
   font-feature-settings: "tnum" 1, "zero" 1;
 }
 
-.text-model { color: var(--accent-model); }
-.text-valid { color: var(--status-valid); }
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+
+.text-threat { color: var(--color-attacker); }
+.text-target { color: var(--color-defender); }
+.text-valid { color: var(--status-allowed); }
 .text-caution { color: var(--status-caution); }
 .text-blocked { color: var(--status-blocked); }
 .text-neutral { color: var(--status-neutral); }

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ContextWorkspace, SystemHealthStatus } from '../../types';
+import { resolveSystemHealthDisplay } from '../../domain/types';
 
 interface NavigationRailProps {
   currentContext: ContextWorkspace;
@@ -20,23 +21,20 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
 }) => {
   const navItems: { id: ContextWorkspace; label: string; shortcut: string }[] = [
     { id: 'RACE', label: 'RACE', shortcut: '1' },
-    { id: 'STRATEGY', label: 'STRAT', shortcut: '2' },
+    { id: 'STRATEGY', label: 'STRATEGY', shortcut: '2' },
     { id: 'EVENTS', label: 'EVENTS', shortcut: '3' },
-    { id: 'ANALYSIS', label: 'ANLYS', shortcut: '4' },
-    { id: 'SYSTEM', label: 'SYS', shortcut: '5' },
+    { id: 'ANALYSIS', label: 'ANALYSIS', shortcut: '4' },
+    { id: 'SYSTEM', label: 'SYSTEM', shortcut: '5' },
   ];
 
-  const healthClass =
-    systemHealth === 'OPERATIONAL'
-      ? 'health-operational'
-      : systemHealth === 'DEGRADED' || systemHealth === 'DECISION_BLOCKED'
-      ? 'health-degraded'
-      : 'health-offline';
+  const resolvedHealth = resolveSystemHealthDisplay(systemHealth as any);
+  const isOk = resolvedHealth === 'OPERATIONAL';
+  const isWarn = resolvedHealth.includes('DEGRADED');
 
   return (
-    <aside className="kyntra-nav-rail" aria-label="Workstation Navigation">
+    <aside className="kyntra-nav-rail" aria-label="Workstation Navigation Rail">
       {/* Brand Icon */}
-      <div className="nav-brand-slot" title="KYNTRA Mission Control">
+      <div className="nav-brand-slot" title="KYNTRA Motorsport Strategy Operations">
         <img
           src="/brand/kyntra-symbol-ui.png"
           alt="KYNTRA"
@@ -56,8 +54,8 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
               onClick={() => onSelectContext(item.id)}
               title={`${item.label} Workspace [Key: ${item.shortcut}]`}
             >
-              <span className="nav-tab-label mono font-bold">{item.label}</span>
-              <span className="nav-tab-shortcut mono">{item.shortcut}</span>
+              <span className="nav-tab-shortcut mono-num">{item.shortcut}</span>
+              <span className="nav-tab-label font-bold">{item.label}</span>
             </button>
           );
         })}
@@ -66,33 +64,29 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
       {/* Bottom Operational Status Info */}
       <div className="nav-bottom-status">
         <div className="status-block" title={`Operating Mode: ${runtimeMode}`}>
-          <span className="status-lbl">MODE</span>
-          <span className="status-val mono font-bold text-accent">
+          <span className="status-lbl text-muted">MODE</span>
+          <span className="status-val font-bold text-secondary">
             {runtimeMode.replace('_FEED', '').replace('HISTORICAL_', '')}
           </span>
         </div>
 
         <div className="status-block" title={`Telemetry Source: ${sourceProvider}`}>
-          <span className="status-lbl">SOURCE</span>
-          <span className="status-val mono font-bold">
-            {sourceProvider ? sourceProvider.slice(0, 7) : 'UNKNOWN'}
+          <span className="status-lbl text-muted">SRC</span>
+          <span className="status-val font-bold text-secondary">
+            {sourceProvider ? sourceProvider.slice(0, 6) : 'LIVE'}
           </span>
         </div>
 
         <div
-          className={`status-block status-health-block ${healthClass} clickable`}
+          className={`status-block status-health-block ${isOk ? 'health-ok' : isWarn ? 'health-warn' : 'health-off'} clickable`}
           onClick={onOpenSystemModal}
-          title={`Platform Health: ${systemHealth}. Click to inspect diagnostics.`}
+          title={`Platform Health: ${resolvedHealth}. Click to inspect diagnostics.`}
         >
-          <span className="status-lbl">SYSTEM</span>
+          <span className="status-lbl text-muted">SYS</span>
           <div className="health-indicator-row">
             <span className="health-dot" />
-            <span className="health-val mono font-bold">
-              {systemHealth === 'OPERATIONAL'
-                ? 'OK'
-                : systemHealth === 'DEGRADED'
-                ? 'DEGR'
-                : 'OFF'}
+            <span className="health-val font-bold">
+              {isOk ? 'OK' : isWarn ? 'WARN' : 'ERR'}
             </span>
           </div>
         </div>

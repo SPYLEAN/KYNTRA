@@ -226,7 +226,7 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
             d={geometry?.path_d || 'M 200 300 L 800 300'}
             fill="none"
             stroke={trackStrokeColor}
-            strokeWidth="8"
+            strokeWidth="5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -235,16 +235,16 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
           <path
             d={geometry?.path_d || 'M 200 300 L 800 300'}
             fill="none"
-            stroke="rgba(255, 255, 255, 0.25)"
-            strokeWidth="1.5"
+            stroke="rgba(255, 255, 255, 0.15)"
+            strokeWidth="1"
             strokeDasharray="4 6"
           />
 
           {/* Start / Finish Line */}
           {sfCoords && (
             <g transform={`translate(${sfCoords.x}, ${sfCoords.y})`}>
-              <line x1="-8" y1="-8" x2="8" y2="8" stroke="#ffffff" strokeWidth="2.5" />
-              <text x="12" y="4" fill="#ffffff" fontSize="9" fontWeight="700" fontFamily="monospace">
+              <line x1="-6" y1="-6" x2="6" y2="6" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
+              <text x="9" y="3" fill="rgba(255,255,255,0.7)" fontSize="8" fontWeight="600">
                 S/F
               </text>
             </g>
@@ -257,10 +257,10 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
               y1={sfCoords.y}
               x2={sfNextCoords.x}
               y2={sfNextCoords.y}
-              stroke="#00e5ff"
-              strokeWidth="2"
+              stroke="rgba(255,255,255,0.4)"
+              strokeWidth="1.5"
               markerEnd="url(#dir-arrow)"
-              opacity="0.85"
+              opacity="0.6"
             />
           )}
 
@@ -270,14 +270,13 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
               const coords = getCarCoordinates(sm.progress);
               return (
                 <g key={idx} transform={`translate(${coords.x}, ${coords.y})`}>
-                  <circle r="3.5" fill="#f59e0b" opacity="0.85" />
+                  <circle r="2.5" fill="rgba(245, 158, 11, 0.7)" />
                   <text
-                    x="8"
-                    y="4"
-                    fill="rgba(255,255,255,0.7)"
-                    fontSize="9"
-                    fontWeight="700"
-                    fontFamily="monospace"
+                    x="6"
+                    y="3"
+                    fill="rgba(255,255,255,0.5)"
+                    fontSize="7.5"
+                    fontWeight="600"
                   >
                     S{sm.sector}
                   </text>
@@ -285,27 +284,27 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
               );
             })}
 
-          {/* Attacker Breadcrumb Trail */}
+          {/* Attacker Breadcrumb Trail (Restrained Red) */}
           {layers.cars && attackerTrail.length > 1 && (
             <polyline
               points={attackerTrail.map((p) => `${p.x},${p.y}`).join(' ')}
               fill="none"
-              stroke="#00e5ff"
+              stroke="#E05252"
               strokeWidth="1.5"
               strokeDasharray="2 3"
-              opacity="0.4"
+              opacity="0.5"
             />
           )}
 
-          {/* Defender Breadcrumb Trail */}
+          {/* Defender Breadcrumb Trail (Restrained Cyan/Sky) */}
           {layers.cars && defenderTrail.length > 1 && (
             <polyline
               points={defenderTrail.map((p) => `${p.x},${p.y}`).join(' ')}
               fill="none"
-              stroke="#ff3366"
+              stroke="#38BDF8"
               strokeWidth="1.5"
               strokeDasharray="2 3"
-              opacity="0.4"
+              opacity="0.5"
             />
           )}
 
@@ -317,48 +316,35 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
                 y1={attCoords.y}
                 x2={defCoords.x}
                 y2={defCoords.y}
-                stroke="#f59e0b"
-                strokeWidth="2"
-                strokeDasharray="4 3"
-                opacity="0.9"
+                stroke="rgba(245, 158, 11, 0.5)"
+                strokeWidth="1.5"
+                strokeDasharray="3 3"
               />
 
-              {/* Midpoint Operational Vector Display */}
-              <g transform={`translate(${(attCoords.x + defCoords.x) / 2}, ${(attCoords.y + defCoords.y) / 2 - 16})`}>
+              {/* Midpoint Compact Operational Vector Badge (Clean & Non-Obtrusive) */}
+              <g transform={`translate(${(attCoords.x + defCoords.x) / 2}, ${(attCoords.y + defCoords.y) / 2 - 12})`}>
                 <rect
-                  x="-75"
-                  y="-14"
-                  width="150"
-                  height="28"
+                  x="-42"
+                  y="-9"
+                  width="84"
+                  height="18"
                   rx="3"
-                  fill="#0a0c10"
-                  stroke="#f59e0b"
-                  strokeWidth="1.2"
+                  fill="#101318"
+                  stroke="rgba(255, 255, 255, 0.14)"
+                  strokeWidth="1"
                 />
                 <text
                   x="0"
-                  y="-2"
+                  y="3"
                   textAnchor="middle"
-                  fill="#ffffff"
-                  fontSize="9.5"
-                  fontWeight="700"
-                  fontFamily="monospace"
-                >
-                  {attackerCode} ●── {gapSeconds !== null && gapSeconds !== undefined ? `${gapSeconds.toFixed(2)}s` : '—'} ──● {defenderCode}
-                </text>
-                <text
-                  x="0"
-                  y="9"
-                  textAnchor="middle"
-                  fill={closingRate && closingRate > 0 ? '#10b981' : '#94a3b8'}
+                  fill="#F2F4F5"
                   fontSize="8.5"
                   fontWeight="700"
                   fontFamily="monospace"
                 >
-                  {closingRate !== null && closingRate !== undefined
-                    ? `${closingRate > 0 ? 'CLOSING +' : 'OPENING '}${Math.abs(closingRate).toFixed(2)} m/s`
-                    : 'GAP STABLE'}
-                  {spatialGapMeters ? ` (${spatialGapMeters.toFixed(0)}m)` : ''}
+                  {gapSeconds !== null && gapSeconds !== undefined ? `${gapSeconds.toFixed(2)}s` : '—'}
+                  {closingRate != null ? ` (${closingRate > 0 ? '+' : ''}${closingRate.toFixed(1)}m/s)` : ''}
+                  {spatialGapMeters != null ? ` • ${Math.round(spatialGapMeters)}m` : ''}
                 </text>
               </g>
             </g>
@@ -370,7 +356,7 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
               const coords = getCarCoordinates(car.progress);
               const isAttacker = car.driver === attackerCode;
               const isDefender = car.driver === defenderCode;
-              const carColor = car.color || '#3b82f6';
+              const carColor = isAttacker ? '#E05252' : isDefender ? '#38BDF8' : (car.color || '#475569');
 
               return (
                 <g
@@ -379,45 +365,45 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
                   style={{ transition: 'transform 0.4s ease-out', cursor: 'pointer' }}
                   onClick={() => onSelectCar && onSelectCar(car.driver)}
                 >
-                  {/* Attacker Geometric Target Ring */}
+                  {/* Attacker Target Ring (Restrained Red) */}
                   {isAttacker && (
                     <circle
-                      r="14"
+                      r="12"
                       fill="none"
-                      stroke="#00e5ff"
-                      strokeWidth="1.8"
-                      strokeDasharray="4 2"
-                      opacity="0.95"
+                      stroke="#E05252"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 2"
+                      opacity="0.9"
                     />
                   )}
 
-                  {/* Defender Geometric Target Ring */}
+                  {/* Defender Target Ring (Restrained Cyan) */}
                   {isDefender && (
                     <circle
-                      r="14"
+                      r="12"
                       fill="none"
-                      stroke="#ff3366"
-                      strokeWidth="1.8"
-                      strokeDasharray="4 2"
-                      opacity="0.95"
+                      stroke="#38BDF8"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 2"
+                      opacity="0.9"
                     />
                   )}
 
                   {/* Core Car Marker Circle */}
                   <circle
-                    r="8.5"
+                    r={isAttacker || isDefender ? '7.5' : '5.5'}
                     fill={carColor}
-                    stroke={isAttacker ? '#00e5ff' : isDefender ? '#ff3366' : '#0c0e12'}
-                    strokeWidth={isAttacker || isDefender ? '2' : '1.5'}
+                    stroke={isAttacker ? '#E05252' : isDefender ? '#38BDF8' : 'rgba(0,0,0,0.5)'}
+                    strokeWidth={isAttacker || isDefender ? '1.5' : '1'}
                   />
 
                   {/* Driver Code Label */}
                   <text
-                    y="-13"
+                    y={isAttacker || isDefender ? '-11' : '-9'}
                     textAnchor="middle"
-                    fill={isAttacker ? '#00e5ff' : isDefender ? '#ff3366' : '#ffffff'}
-                    fontSize="9.5"
-                    fontWeight="800"
+                    fill={isAttacker ? '#E05252' : isDefender ? '#38BDF8' : '#94A3B8'}
+                    fontSize={isAttacker || isDefender ? '9' : '7.5'}
+                    fontWeight={isAttacker || isDefender ? '700' : '500'}
                     fontFamily="monospace"
                   >
                     {car.driver}
@@ -425,11 +411,11 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
 
                   {/* Position Badge Number inside Circle */}
                   <text
-                    y="3"
+                    y="2.5"
                     textAnchor="middle"
                     fill="#ffffff"
-                    fontSize="8.5"
-                    fontWeight="800"
+                    fontSize={isAttacker || isDefender ? '7.5' : '6.5'}
+                    fontWeight="700"
                     fontFamily="monospace"
                   >
                     {car.position ?? ''}

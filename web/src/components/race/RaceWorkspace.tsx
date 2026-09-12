@@ -308,32 +308,40 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
           COLUMN 3: RIGHT (27–30%) — ACTIVE BATTLE, HORIZONS, RULES, CALL, WHY
           ========================================================================= */}
       <aside className="race-col-right" aria-label="Tactical Intelligence Sector">
-        {/* Sector 1: Active Battle Card */}
+        {/* Sector 1: Active / Tracked Battle Card */}
         <div className="right-panel-battle">
           <div className="panel-header-strip">
-            <span className="panel-title font-bold">ACTIVE BATTLE</span>
-            <ProvenanceChip type="LIVE" />
+            <span className="panel-title font-bold">
+              {watchlist.some((w) => w.battle_id === selectedBattleId) ? 'ACTIVE BATTLE' : 'TRACKED BATTLE'}
+            </span>
+            <ProvenanceChip
+              type={
+                watchlist.some((w) => w.battle_id === selectedBattleId)
+                  ? (runtimeSnapshot?.mode === 'HISTORICAL_REPLAY' ? 'HISTORICAL OUTCOME' : 'LIVE')
+                  : 'HISTORICAL OUTCOME'
+              }
+            />
           </div>
-          <div className="battle-card-content mono">
+          <div className="battle-card-content">
             {attackerCode && defenderCode ? (
               <div className="battle-vs-row">
                 <div className="fighter att-fighter">
                   <span className="role-tag text-threat font-bold">ATTACKER</span>
-                  <span className="code font-bold">{attackerCode}</span>
-                  <span className="pos text-muted">P{cars[attackerCode]?.position || '—'}</span>
+                  <span className="code font-bold text-threat mono-num">{attackerCode}</span>
+                  <span className="pos text-muted mono-num">P{cars[attackerCode]?.position || '—'}</span>
                 </div>
                 <div className="vs-divider">
-                  <span className="gap-text font-bold text-accent">
+                  <span className="gap-text font-bold text-primary mono-num">
                     {gapSeconds != null ? `${gapSeconds.toFixed(2)}s` : '—'}
                   </span>
-                  <span className="rate-text text-muted">
+                  <span className="rate-text text-muted mono-num">
                     {closingRate != null ? `${closingRate > 0 ? '+' : ''}${closingRate.toFixed(1)} m/s` : ''}
                   </span>
                 </div>
                 <div className="fighter def-fighter">
-                  <span className="role-tag text-primary font-bold">DEFENDER</span>
-                  <span className="code font-bold">{defenderCode}</span>
-                  <span className="pos text-muted">P{cars[defenderCode]?.position || '—'}</span>
+                  <span className="role-tag text-target font-bold">DEFENDER</span>
+                  <span className="code font-bold text-target mono-num">{defenderCode}</span>
+                  <span className="pos text-muted mono-num">P{cars[defenderCode]?.position || '—'}</span>
                 </div>
               </div>
             ) : (
@@ -357,64 +365,95 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
           />
         </div>
 
-        {/* Sector 3: Simulated Energy Horizon */}
+        {/* Sector 3: Simulated Energy Horizon (Authentic Technical Card) */}
         <div className="right-panel-energy">
           <div className="panel-header-strip">
             <span className="panel-title font-bold">ENERGY HORIZON</span>
             <ProvenanceChip type="SIMULATED ENERGY" />
           </div>
-          <div className="energy-mini-card mono">
-            <div className="energy-bar-track">
-              <div
-                className="energy-bar-fill"
-                style={{
-                  width: `${Math.min(100, Math.max(0, ((availEnergyMj ?? 0) / 4.0) * 100))}%`,
-                }}
-              />
+          <div className="energy-technical-card">
+            <div className="energy-stat-row">
+              <div className="stat-col">
+                <span className="stat-lbl text-muted">CURRENT STORE</span>
+                <div className="stat-num-line">
+                  <span className="stat-num mono-num font-bold text-primary">
+                    {availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : '—'}
+                  </span>
+                  <span className="stat-sub text-muted mono-num">/ 4.00 MJ CAP</span>
+                </div>
+              </div>
+              <div className="stat-col text-right">
+                <span className="stat-lbl text-muted">MGU-K LIMIT</span>
+                <span className="stat-num mono-num font-bold text-secondary">350 kW</span>
+                <span className="stat-sub text-muted">2026 TR</span>
+              </div>
             </div>
-            <div className="energy-labels">
-              <span className="e-val font-bold">
-                {availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : '—'}
+            <div className="energy-context-footer">
+              <span className="ctx-scenario text-secondary">
+                SCENARIO: <strong className="text-primary">Nominal 2026 TR</strong>
               </span>
-              <span className="e-cap text-muted">/ 4.00 MJ CAP</span>
-              <span className="e-tag text-accent font-bold">350 kW MGU-K</span>
+              <span className="ctx-disclaimer text-muted">
+                SIMULATED — REGULATION CONSTRAINED (NOT MEASURED BATTERY SOC)
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Sector 4: Rule & Stability Summary */}
+        {/* Sector 4: Rule & Stability Summary (Compact 2-Column Grid) */}
         <div className="right-panel-rules-stability">
-          <div className="dual-chip-row mono">
+          <div className="dual-status-grid">
             <div
-              className={`status-chip ${ruleStatus === 'ALLOWED' ? 'chip-ok' : 'chip-warn'} clickable`}
+              className="status-summary-item clickable"
               onClick={() =>
                 onOpenEvidence({
                   title: 'FIA Sporting & Technical Regulations Compliance',
                   value: ruleStatus,
-                  status: ruleStatus === 'ALLOWED' ? 'VALID' : 'BLOCKED',
+                  status: ruleStatus === 'ALLOWED' ? 'VALID' : ruleStatus === 'UNKNOWN' ? 'UNKNOWN' : 'BLOCKED',
                   provenance: 'RULE CHECK',
                   method: 'Deterministic FIA 2026 Code C5.2.7 Check',
                 })
               }
+              title="Click to inspect regulatory evidence"
             >
-              <span className="chip-lbl text-muted">RULES:</span>
-              <span className="chip-val font-bold">{ruleStatus}</span>
+              <span className="item-label text-muted">RULE ELIGIBILITY</span>
+              <span
+                className={`item-status-val font-bold ${
+                  ruleStatus === 'ALLOWED'
+                    ? 'text-valid'
+                    : ruleStatus === 'UNKNOWN'
+                    ? 'text-neutral'
+                    : 'text-blocked'
+                }`}
+              >
+                {ruleStatus}
+              </span>
             </div>
 
             <div
-              className={`status-chip ${stabilityVerdict === 'FAVORABLE' ? 'chip-ok' : 'chip-warn'} clickable`}
+              className="status-summary-item clickable"
               onClick={() =>
                 onOpenEvidence({
                   title: 'Stability V1 Post-Pass Degradation Verdict',
                   value: stabilityVerdict,
-                  status: stabilityVerdict === 'FAVORABLE' ? 'VALID' : 'CAUTION',
+                  status: stabilityVerdict === 'FAVORABLE' ? 'VALID' : stabilityVerdict === 'UNKNOWN' ? 'UNKNOWN' : 'CAUTION',
                   provenance: 'ORDINAL STABILITY',
                   method: 'Rank Conservation Metric',
                 })
               }
+              title="Click to inspect stability evidence"
             >
-              <span className="chip-lbl text-muted">STABILITY:</span>
-              <span className="chip-val font-bold">{stabilityVerdict}</span>
+              <span className="item-label text-muted">STABILITY V1</span>
+              <span
+                className={`item-status-val font-bold ${
+                  stabilityVerdict === 'FAVORABLE'
+                    ? 'text-valid'
+                    : stabilityVerdict === 'UNKNOWN'
+                    ? 'text-neutral'
+                    : 'text-caution'
+                }`}
+              >
+                {stabilityVerdict}
+              </span>
             </div>
           </div>
         </div>
@@ -435,6 +474,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
           <WhyWhyNotPanel
             whySelected={whySelected}
             whyNot={whyNot}
+            ruleStatus={ruleStatus}
             onOpenEvidence={onOpenEvidence}
           />
         </div>

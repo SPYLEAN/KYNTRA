@@ -21,14 +21,14 @@ export const TimingTower: React.FC<TimingTowerProps> = ({
   }, [cars]);
 
   return (
-    <div className="timing-tower-panel">
+    <div className="timing-tower-panel" aria-label="Race Running Order Timing Tower">
       <div className="tower-header-row">
-        <span className="tower-title font-bold mono">RUNNING ORDER</span>
-        <span className="tower-count mono text-muted">{sortedCars.length} CARS</span>
+        <span className="tower-title font-bold">TIMING TOWER</span>
+        <span className="tower-count text-muted mono-num">{sortedCars.length} CARS</span>
       </div>
 
       <div className="table-bounded-scroll tower-scroll-area">
-        <table className="timing-table mono">
+        <table className="timing-table">
           <thead>
             <tr>
               <th className="col-pos">P</th>
@@ -51,7 +51,7 @@ export const TimingTower: React.FC<TimingTowerProps> = ({
                 const isDefender = car.driver === defenderCode;
                 const isBattleParticipant = isAttacker || isDefender;
 
-                let rowClass = '';
+                let rowClass = 'row-neutral';
                 if (isAttacker) rowClass = 'row-attacker';
                 if (isDefender) rowClass = 'row-defender';
 
@@ -76,22 +76,26 @@ export const TimingTower: React.FC<TimingTowerProps> = ({
                     onClick={() => onSelectCar && onSelectCar(car.driver)}
                     title={
                       isAttacker
-                        ? 'ATTACKER in selected battle'
+                        ? `ATTACKER [${car.driver}] in tracked battle`
                         : isDefender
-                        ? 'DEFENDER in selected battle'
-                        : `Inspect ${car.driver}`
+                        ? `DEFENDER [${car.driver}] in tracked battle`
+                        : `Select ${car.driver}`
                     }
                   >
-                    <td className="col-pos font-bold">
+                    <td className="col-pos mono-num font-bold">
                       {car.position ?? idx + 1}
                     </td>
-                    <td className="col-driver font-bold">
+                    <td className="col-driver">
                       <span className="driver-flag-slot">
-                        {isBattleParticipant && (
+                        {isBattleParticipant ? (
                           <span className={`battle-marker-dot ${isAttacker ? 'dot-atk' : 'dot-def'}`} />
+                        ) : (
+                          <span className="dot-placeholder" />
                         )}
                       </span>
-                      <span className="driver-code-text">{car.driver}</span>
+                      <span className={`driver-code-text ${isAttacker ? 'text-threat font-bold' : isDefender ? 'text-target font-bold' : 'text-primary'}`}>
+                        {car.driver}
+                      </span>
                     </td>
                     <td className="col-gap text-secondary mono-num">
                       {gapLeader}

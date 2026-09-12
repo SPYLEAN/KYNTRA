@@ -163,6 +163,12 @@ export default function App() {
       const snap = await KyntraApiClient.getRuntimeSnapshot();
       if (snap) {
         setRuntimeSnapshot(snap);
+        // Contradiction A1: align operatingMode if backend is HISTORICAL_REPLAY
+        if (snap.mode === 'HISTORICAL_REPLAY' && operatingMode === 'LIVE') {
+          setOperatingMode('REPLAY');
+        } else if (snap.mode === 'LIVE_FEED' && operatingMode === 'REPLAY') {
+          setOperatingMode('LIVE');
+        }
         if (snap.active_battles && snap.active_battles.length > 0) {
           setActiveBattles(snap.active_battles);
           if (!selectedBattleId) {
@@ -175,7 +181,7 @@ export default function App() {
     fetchRuntime();
     const interval = setInterval(fetchRuntime, 1000);
     return () => clearInterval(interval);
-  }, [selectedBattleId]);
+  }, [selectedBattleId, operatingMode]);
 
   // Fallback REST polling if WebSocket is offline
   useEffect(() => {
@@ -289,7 +295,7 @@ export default function App() {
       } else if (e.key === '2') {
         setCurrentContext('STRATEGY');
       } else if (e.key === '3') {
-        setCurrentContext('REPLAY');
+        setCurrentContext('EVENTS');
       } else if (e.key === '4') {
         setCurrentContext('ANALYSIS');
       } else if (e.key === '5') {
@@ -416,15 +422,15 @@ export default function App() {
                   </tr>
                   <tr>
                     <td><kbd>3</kbd></td>
-                    <td>REPLAY Playback Workspace</td>
+                    <td>EVENTS Chronology &amp; Incident Log</td>
                   </tr>
                   <tr>
                     <td><kbd>4</kbd></td>
-                    <td>ANALYSIS Offline Workspace</td>
+                    <td>ANALYSIS Model Calibration &amp; Features</td>
                   </tr>
                   <tr>
                     <td><kbd>5</kbd></td>
-                    <td>SYSTEM &amp; Tech Stack Diagnostics</td>
+                    <td>SYSTEM &amp; Module Diagnostics</td>
                   </tr>
                   <tr>
                     <td><kbd>ESC</kbd></td>
