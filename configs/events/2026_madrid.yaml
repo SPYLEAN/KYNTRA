@@ -1,0 +1,42 @@
+# 2026 Madrid Spanish Grand Prix — Official FIA Event Configuration
+# Round: 2026 Formula 1 Spanish Grand Prix (Madrid Street Circuit)
+# Dates: 11-13 September 2026
+# Governing Rules: FIA 2026 Technical Regulations (Issue 20) & Sporting Regulations (Issue 08)
+
+event:
+  name: "Spanish Grand Prix"
+  year: 2026
+  round: 14
+  circuit: "Circuito de Madring, Madrid"
+  event_id: "2026_14_ESP"
+
+  provenance:
+    document: "2026 Spanish Grand Prix - FIA Formula One Race Director Document 3"
+    title: "Power Unit Information & Circuit Technical Specifications"
+    publication_date: "2026-09-10"
+    issuer: "FIA Formula One Race Director"
+    source_status: "OFFICIAL_EVENT_DOCUMENT"
+
+  # Timing & Detection Lines
+  detection_gap_seconds: 1.0
+
+  detection_line:
+    distance_m: 4820.0
+    loop: "L19_DET"
+    source_status: "VERIFIED"
+
+  activation_line:
+    distance_m: 4910.0
+    loop: "L20_ACT"
+    source_status: "VERIFIED"
+
+  # Event-specific Energy Store Recharge Limits (FIA Article C5.2.9)
+  race_recharge_limit_mj:
+    overtake_inactive: 8.0
+    overtake_active: 8.5
+
+  qualifying_recharge_limit_mj: 7.0
+  free_practice_recharge_limit_mj: 8.5
+
+  # Power reduction rate limit (FIA Article C5.2.7)
+  power_reduction_rate_limit_kw_per_s: 50.0

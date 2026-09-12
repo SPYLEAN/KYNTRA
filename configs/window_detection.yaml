@@ -1,0 +1,20 @@
+# KYNTRA Rolling Window State Configuration
+# PROVENANCE: UNVERIFIED — REQUIRES FUTURE BACKTEST
+#
+# WINDOW_STATE_HEURISTIC:
+# Derives qualitative temporal window trajectory states (FORMING, PEAKING, FADING, STABLE, UNKNOWN)
+# from recent valid LightGBM inference outputs. These are qualitative trajectory heuristics
+# based on relative trend consistency, NOT calibrated ML probabilities or regression models.
+
+window_state_detection:
+  # WINDOW_STATE_HEURISTIC: Minimum consecutive valid probability observations required before classifying
+  min_history_points: 2
+
+  # WINDOW_STATE_HEURISTIC: Number of recent points evaluated for local trajectory
+  recent_window_size: 5
+
+  # WINDOW_STATE_HEURISTIC: Minimum delta to distinguish true trend from floating-point / decimal noise
+  noise_tolerance: 0.008
+
+  # WINDOW_STATE_HEURISTIC: Maximum distance from local maximum to be considered "near local recent peak"
+  near_peak_tolerance: 0.020

@@ -1,7 +1,7 @@
 """Data schemas and Pydantic validation models for KYNTRA."""
 
 from datetime import timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -110,6 +110,8 @@ class ProvenanceSnapshot(BaseModel):
     event_config_version: Optional[str] = "2026_V1"
     overtake_model_version: Optional[str] = "1.0.0"
     stability_method: Optional[str] = "DETERMINISTIC_POST_PASS_STABILITY_V1"
+    source_mode: str = "HISTORICAL_REPLAY"  # LIVE_FEED | CAPTURED_LIVE | HISTORICAL_REPLAY
+    feed_provider: Optional[str] = None
 
 
 class BattleStateSnapshot(BaseModel):
@@ -142,8 +144,13 @@ class StabilitySnapshot(BaseModel):
     method: str = "DETERMINISTIC_POST_PASS_STABILITY_V1"
     verdict: str = "UNKNOWN"  # FAVORABLE | CAUTION | HIGH_RISK | UNKNOWN
     available: bool = False
-    evidence: List[str] = Field(default_factory=list)
+    evidence: List[Union[str, Dict[str, Any]]] = Field(default_factory=list)
     reason: Optional[str] = "STABILITY_RULESET_PENDING_VERIFICATION"
+    manifest_version: Optional[str] = None
+    manifest_sha256: Optional[str] = None
+    dataset_sha256: Optional[str] = None
+    available_families: List[str] = Field(default_factory=list)
+    triggered_families: List[str] = Field(default_factory=list)
 
 
 class EnergySnapshot(BaseModel):
@@ -201,4 +208,154 @@ class DecisionSnapshot(BaseModel):
     compliance: ComplianceSnapshot
     counterfactuals: List[CounterfactualActionSnapshot]
     recommendation: RecommendationSnapshot
+
+
+# ==============================================================================
+# Phase 4A Live Race State & Event Memory Schemas
+# ==============================================================================
+
+class CarState(BaseModel):
+    """Normalized state of an individual car at current timestamp.
+    
+    Unavailable telemetry fields remain None; never filled with fake zeros.
+    """
+    driver: str = Field(..., description="Driver 3-letter code (e.g. 'VER')")
+    number: str = Field(..., description="Car race number (e.g. '1')")
+    name: Optional[str] = None
+    team: Optional[str] = None
+    color: Optional[str] = None
+    position: Optional[int] = None
+    gap_to_leader: Optional[float] = None
+    gap_to_car_ahead: Optional[float] = None
+    speed: Optional[float] = None
+    tyre_compound: Optional[str] = None
+    tyre_age: Optional[float] = None
+    pit_status: Optional[str] = "ON_TRACK"
+    drs_active: Optional[bool] = None
+    x: Optional[float] = None
+    y: Optional[float] = None
+    progress: Optional[float] = None
+
+
+class TrackState(BaseModel):
+    """Normalized track condition and flag status."""
+    track_status: str = Field("1", description="FIA track status code (1=Green, 2=Yellow, 4=SC, 5=Red, 6/7=VSC)")
+    sector: Optional[int] = None
+    weather: Optional[str] = "DRY"
+    active_flags: List[str] = Field(default_factory=list)
+    event_config_available: bool = True
+
+
+class SessionState(BaseModel):
+    """High-level race session metadata."""
+    event_id: str
+    event_name: str
+    circuit: Optional[str] = None
+    session_type: str = "RACE"
+    current_lap: int = 1
+    total_laps: int = 50
+    session_time: Optional[float] = None
+    replay_time: Optional[float] = None
+    data_mode: str = "HISTORICAL_REPLAY"  # HISTORICAL_REPLAY | LIVE_FEED | CAPTURED_LIVE | LIVE_FEED_STANDBY
+    source_mode: str = "HISTORICAL_REPLAY"  # LIVE_FEED | CAPTURED_LIVE | HISTORICAL_REPLAY
+    provider: Optional[str] = "REPLAY_ENGINE"
+    meeting: Optional[str] = None
+    last_update_timestamp: Optional[float] = None
+    data_age: Optional[float] = None
+
+
+class RaceState(BaseModel):
+    """Single coherent snapshot of what is true right now across the entire field."""
+    session: SessionState
+    track: TrackState
+    cars: Dict[str, CarState] = Field(default_factory=dict)
+    timestamp: float = Field(..., description="Coherent epoch or session seconds timestamp")
+
+
+class RaceEvent(BaseModel):
+    """Append-only discrete event emitted to the persistent race memory log."""
+    event_id: str = Field(..., description="Deterministic unique event identifier")
+    timestamp: float = Field(..., description="Session time or unix timestamp")
+    race_id: str = Field(..., description="Event identifier (e.g. '2026_13_ITA')")
+    lap: Optional[int] = None
+    sector: Optional[int] = None
+    event_type: str = Field(
+        ...,
+        description=(
+            "Event classification: SESSION_STARTED | LAP_CHANGED | TRACK_STATUS_CHANGED | "
+            "POSITION_CHANGED | PIT_ENTRY | PIT_EXIT | BATTLE_FORMED | BATTLE_ENDED | "
+            "GAP_TREND_CHANGED | PASS_WINDOW_FORMING | PASS_WINDOW_PEAKING | PASS_WINDOW_FADING | "
+            "OVERTAKE_ATTEMPT | OVERTAKE_SUCCESS | POSITION_REVERSED | MODEL_OUTPUT_UPDATED | "
+            "COMPLIANCE_CHANGED | DECISION_CHANGED"
+        ),
+    )
+    cars: List[str] = Field(default_factory=list, description="Driver codes involved")
+    battle_id: Optional[str] = None
+    raw_state_reference: Optional[str] = None
+    derived_data: Dict[str, Any] = Field(default_factory=dict)
+    source: str = "KYNTRA_LIVE_CORE"
+    provenance: str = "PROVENANCE_VERIFIED"
+
+    @staticmethod
+    def build_deterministic_id(
+        race_id: str,
+        lap: Optional[int],
+        event_type: str,
+        timestamp: float,
+        cars: Optional[List[str]] = None,
+        battle_id: Optional[str] = None,
+        source: str = "LIVE_SERVICE",
+        discriminator: Optional[str] = None,
+    ) -> str:
+        """Construct a deterministic event identity ensuring deduplication and non-collapsing distinct events."""
+        lap_str = f"L{lap}" if lap is not None else "L0"
+        t_str = f"T{round(timestamp, 2):.2f}"
+        cars_str = "_".join(sorted(cars)) if cars else "NOCARS"
+        bid_str = battle_id or "NOBATTLE"
+        disc_str = f"__{discriminator}" if discriminator else ""
+        return f"{race_id}__{lap_str}__{t_str}__{event_type}__{bid_str}__{cars_str}__{source}{disc_str}"
+
+
+class BattleState(BaseModel):
+    """Normalized tactical battle between an attacker and defender."""
+    battle_id: str = Field(..., description="Unique battle sequence identifier")
+    attacker: str
+    defender: str
+    attacker_position: Optional[int] = None
+    defender_position: Optional[int] = None
+    gap_seconds: Optional[float] = None
+    closing_rate: Optional[float] = None
+    relative_pace: Optional[float] = None
+    speed_delta: Optional[float] = None
+    tyre_context: Dict[str, Any] = Field(default_factory=dict)
+    traffic_context: Dict[str, Any] = Field(default_factory=dict)
+    battle_duration: Optional[float] = None
+    feature_missingness: List[str] = Field(default_factory=list)
+
+
+class BattleWatchlistItem(BaseModel):
+    """Active battle item rendered in the live pit-wall watchlist."""
+    battle_id: str
+    attacker: str
+    defender: str
+    attacker_position: Optional[int] = None
+    defender_position: Optional[int] = None
+    gap_seconds: Optional[float] = None
+    gap_trend: Optional[str] = "STABLE"  # CLOSING | STABLE | OPENING | UNKNOWN
+    closing_state: Optional[str] = None
+    window_state: Optional[str] = "UNKNOWN"  # FORMING | STABLE | PEAKING | FADING | UNKNOWN
+    model_available: bool = True
+    compliance_status: str = "LEGAL"
+    priority_state: str = "WATCH"  # WATCH | FORMING | ACTIVE | CRITICAL | UNKNOWN
+
+
+class WindowState(BaseModel):
+    """Rolling temporal overtake window trajectory for an active battle."""
+    battle_id: str
+    window_state: str = "UNKNOWN"  # FORMING | STABLE | PEAKING | FADING | UNKNOWN
+    trend_direction: str = "UNKNOWN"  # INCREASING | FLAT | DECREASING | UNKNOWN
+    recent_history: List[Dict[str, Any]] = Field(default_factory=list)
+    peak_observed_probability: Optional[float] = None
+    peak_observed_time: Optional[float] = None
+
 

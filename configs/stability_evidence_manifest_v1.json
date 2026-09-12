@@ -1,0 +1,155 @@
+{
+  "manifest_version": "1.1.0",
+  "manifest_type": "POST_PASS_STABILITY_CONSENSUS",
+  "name": "KYNTRA Reviewed Composite Post-Pass Stability Evidence Manifest V1",
+  "derivation_date": "2026-09-12",
+  "dataset_filename": "kyntra_overtake_dataset.parquet",
+  "dataset_sha256": "bec6dc848bcdd9a5b8c1b8aba63384e73abe7d41552656b218a5d6832984afac",
+  "dataset_identity": "data/processed/kyntra_overtake_dataset.parquet",
+  "dataset_rows": 8357,
+  "train_rows": 6197,
+  "validation_rows": 2160,
+  "evaluation_horizons_laps": [1, 2, 3],
+  "primary_stability_horizon_laps": 2,
+  "demonstration_holdouts_strictly_isolated": [
+    "2026_01_AUS",
+    "2026_03_JPN",
+    "2026_04_MIA",
+    "2026_13_ITA"
+  ],
+  "rule_families": [
+    "PACE",
+    "SPEED",
+    "TYRE"
+  ],
+  "policy": {
+    "min_available_families": 2,
+    "high_risk_min_triggered_families": 2,
+    "favorable_enabled": false
+  },
+  "polarity_conventions": {
+    "closing_rate": "closing rate in m/s (negative = attacker falling back / losing ground)",
+    "recent_pace_delta_1lap": "defender_lap_time - attacker_lap_time (negative = attacker slower)",
+    "recent_pace_delta_3laps": "defender_lap_time - attacker_lap_time (negative = attacker slower)",
+    "tyre_age_delta": "defender_tyre_age - attacker_tyre_age (negative = attacker tyres older)",
+    "speed_trap_delta": "attacker_speed_trap - defender_speed_trap (negative = attacker slower through trap)"
+  },
+  "ordinal_stability_classes": [
+    "HIGH_RISK",
+    "CAUTION",
+    "UNKNOWN"
+  ],
+  "why_favorable_disabled": "The retained/repassed sample is too sparse to justify a production FAVORABLE classification in V1. Therefore, FAVORABLE remains a valid schema enum for future versions, but Stability V1 emits only HIGH_RISK, CAUTION, UNKNOWN.",
+  "rules": [
+    {
+      "rule_id": "PACE_CLOSE_RATE_RISK",
+      "feature": "closing_rate",
+      "family": "PACE",
+      "status": "ENABLED",
+      "operator": "<=",
+      "threshold": -0.192,
+      "target_verdict": "HIGH_RISK",
+      "unit": "m/s",
+      "reason_code": "PACE_CLOSING_RATE_RISK",
+      "evidence_strength": "STRONG",
+      "description": "Attacker closing rate indicates decelerating or receding relative velocity against defender",
+      "source_quantile": 0.25,
+      "train_support_count": 1549,
+      "validation_support_count": 540
+    },
+    {
+      "rule_id": "PACE_1L_RISK",
+      "feature": "recent_pace_delta_1lap",
+      "family": "PACE",
+      "status": "ENABLED",
+      "operator": "<=",
+      "threshold": -0.1959,
+      "target_verdict": "HIGH_RISK",
+      "unit": "seconds",
+      "reason_code": "PACE_1L_DEFICIT_RISK",
+      "evidence_strength": "STRONG",
+      "description": "Attacker 1-lap pace deficit demonstrates post-pass vulnerability",
+      "source_quantile": 0.25,
+      "train_support_count": 1550,
+      "validation_support_count": 540
+    },
+    {
+      "rule_id": "PACE_3L_RISK",
+      "feature": "recent_pace_delta_3laps",
+      "family": "PACE",
+      "status": "ENABLED",
+      "operator": "<=",
+      "threshold": -0.1816,
+      "target_verdict": "HIGH_RISK",
+      "unit": "seconds",
+      "reason_code": "PACE_3L_DEFICIT_RISK",
+      "evidence_strength": "STRONG",
+      "description": "Attacker sustained 3-lap pace deficit demonstrates sustained vulnerability",
+      "source_quantile": 0.25,
+      "train_support_count": 1550,
+      "validation_support_count": 540
+    },
+    {
+      "rule_id": "SPEED_TRAP_DEFICIT_RISK",
+      "feature": "speed_trap_delta",
+      "family": "SPEED",
+      "status": "ENABLED",
+      "operator": "<=",
+      "threshold": -9.0,
+      "target_verdict": "HIGH_RISK",
+      "unit": "km/h",
+      "reason_code": "SPEED_TRAP_DEFICIT_RISK",
+      "evidence_strength": "STRONG",
+      "description": "Attacker speed trap deficit of >= 9.0 km/h severely impedes post-pass defense on straights",
+      "source_quantile": 0.20,
+      "train_support_count": 1240,
+      "validation_support_count": 432
+    },
+    {
+      "rule_id": "TYRE_AGE_DISADVANTAGE_RISK",
+      "feature": "tyre_age_delta",
+      "family": "TYRE",
+      "status": "ENABLED",
+      "operator": "<=",
+      "threshold": -3.5,
+      "target_verdict": "HIGH_RISK",
+      "unit": "laps",
+      "reason_code": "TYRE_AGE_DISADVANTAGE_RISK",
+      "evidence_strength": "STRONG",
+      "description": "Attacker tyres are 3.5+ laps older than defender, degrading traction post-pass",
+      "source_quantile": 0.25,
+      "train_support_count": 1548,
+      "validation_support_count": 540
+    },
+    {
+      "rule_id": "CAND_REAR_GAP_RISK",
+      "feature": "rear_distance_gap_m",
+      "family": "REAR",
+      "status": "DISABLED",
+      "operator": "<=",
+      "threshold": 15.0,
+      "target_verdict": "HIGH_RISK",
+      "unit": "m",
+      "reason_code": "REAR_THREAT_PROXIMITY",
+      "evidence_strength": "WEAK",
+      "description": "Explicitly disabled pending high-resolution multi-car spatial tracking validation"
+    },
+    {
+      "rule_id": "CAND_GAP_SECONDS_RISK",
+      "feature": "gap_seconds",
+      "family": "GAP",
+      "status": "DISABLED",
+      "operator": "<=",
+      "threshold": 0.3,
+      "target_verdict": "HIGH_RISK",
+      "unit": "seconds",
+      "reason_code": "GAP_PROXIMITY",
+      "evidence_strength": "WEAK",
+      "description": "Explicitly disabled: gap_seconds is an overtake-opportunity feature, not post-pass retention evidence"
+    }
+  ],
+  "metadata": {
+    "engine_compatibility": "KYNTRA_V1_STABILITY",
+    "consensus_policy": "MULTI_FAMILY_MIN_2"
+  }
+}

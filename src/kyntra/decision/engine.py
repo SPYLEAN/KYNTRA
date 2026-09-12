@@ -8,8 +8,10 @@ Integrates:
 5. Counterfactual action evaluation & KYNTRA Call — PENDING VERIFICATION (AWAITING STRATEGY ENGINE)
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from kyntra.models.registry import get_overtake_model
+from kyntra.stability import evaluate_stability as run_stability_evaluation
 from kyntra.schemas import (
     BattleStateSnapshot,
     ComplianceSnapshot,
@@ -28,20 +30,34 @@ def evaluate_stability(
     pace_delta: Optional[float] = None,
     tyre_age_delta: Optional[float] = None,
     rear_threat: Optional[str] = None,
+    features: Optional[Dict[str, Any]] = None,
+    manifest_path: Optional[Path] = None,
 ) -> StabilitySnapshot:
-    """Evaluate post-pass position durability deterministically.
+    """Evaluate post-pass position durability via the manifest-driven stability subsystem.
 
-    SAFETY AUDIT (Phase 3.1):
-    KYNTRA V1 does NOT currently have an approved stability rule engine.
-    Heuristic numeric thresholds have been removed pending empirical verification.
-    Outputs verdict='UNKNOWN', available=False, and evidence=[].
+    Unless reviewed rules in the manifest are explicitly ENABLED, deterministically
+    returns verdict='UNKNOWN', available=False.
     """
+    feat_dict = dict(features) if features else {}
+    if pace_delta is not None and "recent_pace_delta_1lap" not in feat_dict:
+        feat_dict["recent_pace_delta_1lap"] = pace_delta
+    if tyre_age_delta is not None and "tyre_age_delta" not in feat_dict:
+        feat_dict["tyre_age_delta"] = tyre_age_delta
+    if rear_threat is not None and "rear_threat" not in feat_dict:
+        feat_dict["rear_threat"] = rear_threat
+
+    res = run_stability_evaluation(features=feat_dict, manifest_path=manifest_path)
     return StabilitySnapshot(
         method="DETERMINISTIC_POST_PASS_STABILITY_V1",
-        verdict="UNKNOWN",
-        available=False,
-        evidence=[],
-        reason="STABILITY_RULESET_PENDING_VERIFICATION",
+        verdict=res.verdict.value,
+        available=res.available,
+        evidence=[e.model_dump() for e in res.evidence],
+        reason=res.reason,
+        manifest_version=res.manifest_version,
+        manifest_sha256=res.manifest_sha256,
+        dataset_sha256=res.dataset_sha256,
+        available_families=res.available_families,
+        triggered_families=res.triggered_families,
     )
 
 
@@ -188,25 +204,36 @@ def compute_decision(
         "speed_trap_delta": battle_data.get("speed_trap_delta"),
     }
 
-    try:
-        pred = model.predict_one(model_features)
-        overtake = OvertakeInferenceSnapshot(
-            available=True,
-            model_version=pred.model_version,
-            p_1_lap=pred.p_pass_1_lap,
-            p_2_laps=pred.p_pass_2_laps,
-            p_3_laps=pred.p_pass_3_laps,
-            raw_p_1_lap=pred.p_pass_1_lap_raw,
-            raw_p_2_laps=pred.p_pass_2_laps_raw,
-            raw_p_3_laps=pred.p_pass_3_laps_raw,
-            horizon_projection_applied=pred.projection_applied,
-            feature_missingness=pred.feature_missingness,
-        )
-    except Exception:
+    missing_features = [f for f, v in model_features.items() if v is None]
+    if missing_features:
         overtake = OvertakeInferenceSnapshot(
             available=False,
-            feature_missingness=list(model_features.keys()),
+            model_version="1.0.0",
+            p_1_lap=None,
+            p_2_laps=None,
+            p_3_laps=None,
+            feature_missingness=missing_features,
         )
+    else:
+        try:
+            pred = model.predict_one(model_features)
+            overtake = OvertakeInferenceSnapshot(
+                available=True,
+                model_version=pred.model_version,
+                p_1_lap=pred.p_pass_1_lap,
+                p_2_laps=pred.p_pass_2_laps,
+                p_3_laps=pred.p_pass_3_laps,
+                raw_p_1_lap=pred.p_pass_1_lap_raw,
+                raw_p_2_laps=pred.p_pass_2_laps_raw,
+                raw_p_3_laps=pred.p_pass_3_laps_raw,
+                horizon_projection_applied=pred.projection_applied,
+                feature_missingness=pred.feature_missingness,
+            )
+        except Exception:
+            overtake = OvertakeInferenceSnapshot(
+                available=False,
+                feature_missingness=list(model_features.keys()),
+            )
 
     # 4. Energy state (CAN I AFFORD IT?) — Simulated 2026 regulation constrained
     energy_sim = simulated_energy_state or {}
@@ -224,11 +251,15 @@ def compute_decision(
         sensitivity=None,
     )
 
-    # 5. Stability (CAN I KEEP IT?) — Hardened pending verification
+    # 5. Stability (CAN I KEEP IT?) — Manifest-driven multi-family consensus
     stability = evaluate_stability(
-        pace_delta=battle_data.get("recent_pace_delta_1lap"),
-        tyre_age_delta=battle_data.get("tyre_age_delta"),
-        rear_threat=battle_data.get("rear_threat"),
+        features={
+            "closing_rate": battle_data.get("closing_rate"),
+            "recent_pace_delta_1lap": battle_data.get("recent_pace_delta_1lap"),
+            "recent_pace_delta_3laps": battle_data.get("recent_pace_delta_3laps"),
+            "speed_trap_delta": battle_data.get("speed_trap_delta"),
+            "tyre_age_delta": battle_data.get("tyre_age_delta"),
+        }
     )
 
     # 6. Compliance (AM I ALLOWED?) — Deterministic FIA rules & safe event fallback
@@ -278,6 +309,8 @@ def compute_decision(
         event_config_version="2026_V1",
         overtake_model_version=overtake.model_version or "1.0.0",
         stability_method="DETERMINISTIC_POST_PASS_STABILITY_V1",
+        source_mode=race_data.get("source_mode", "HISTORICAL_REPLAY"),
+        feed_provider=race_data.get("provider", "REPLAY_ENGINE"),
     )
 
     return DecisionSnapshot(

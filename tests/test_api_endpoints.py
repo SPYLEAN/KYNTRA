@@ -88,11 +88,12 @@ def test_api_replay_lap_decision_snapshot(client):
     assert snapshot["energy"]["simulated"] is True
     assert "SIMULATED" in snapshot["energy"]["provenance"]
 
-    # Verify stability safety hardening (Phase 3.1)
+    # Verify stability consensus evaluation (Phase 06B-B)
     assert snapshot["stability"]["method"] == "DETERMINISTIC_POST_PASS_STABILITY_V1"
-    assert snapshot["stability"]["verdict"] == "UNKNOWN"
-    assert snapshot["stability"]["available"] is False
-    assert snapshot["stability"]["reason"] == "STABILITY_RULESET_PENDING_VERIFICATION"
+    assert snapshot["stability"]["verdict"] == "CAUTION"
+    assert snapshot["stability"]["available"] is True
+    assert snapshot["stability"]["reason"] == "NO_MULTI_FAMILY_RISK_CONSENSUS"
+    assert "dataset_sha256" in snapshot["stability"]
 
     # Verify compliance safety fallback for unconfigured event (Italy)
     assert snapshot["compliance"]["status"] == "UNKNOWN"
@@ -170,4 +171,5 @@ def test_api_custom_decision_post(client):
     assert snapshot["overtake"]["available"] is True
     assert snapshot["overtake"]["p_1_lap"] <= snapshot["overtake"]["p_2_laps"] <= snapshot["overtake"]["p_3_laps"]
     assert snapshot["recommendation"]["available"] is False
-    assert snapshot["stability"]["available"] is False
+    assert snapshot["stability"]["available"] is True
+    assert snapshot["stability"]["verdict"] == "CAUTION"

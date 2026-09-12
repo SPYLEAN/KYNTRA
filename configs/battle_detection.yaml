@@ -1,0 +1,28 @@
+# KYNTRA Battle Detection & Watchlist Configuration
+# PROVENANCE: UNVERIFIED OPERATIONAL HEURISTICS — NOT FIA REGULATIONS OR LEARNED ML THRESHOLDS
+#
+# These heuristics govern automated adjacent-car battle discovery and termination
+# across telemetry states. They require future backtesting against full-season telemetry.
+
+battle_detection:
+  # BATTLE_DISCOVERY_HEURISTIC: Maximum gap to car ahead to discover and enter a new active battle candidate
+  proximity_threshold_seconds: 2.5
+
+  # BATTLE_TERMINATION_HEURISTIC: Gap threshold above which an active battle begins terminating
+  termination_gap_seconds: 3.5
+
+  # BATTLE_TERMINATION_HEURISTIC: Number of consecutive observations exceeding termination_gap_seconds required to end battle
+  termination_consecutive_ticks: 3
+
+  # BATTLE_DISCOVERY_HEURISTIC: Minimum consecutive observations before formal battle formation event
+  min_observations_to_form: 1
+
+  # BATTLE_DISCOVERY_HEURISTIC: Transparent ordinal priority state thresholds (seconds)
+  priority_thresholds:
+    critical_gap_seconds: 0.60
+    active_gap_seconds: 1.20
+    forming_gap_seconds: 2.00
+    watch_gap_seconds: 2.50
+
+  # Default speed conversion fallback (m/s) if speed is missing
+  default_speed_mps: 66.7

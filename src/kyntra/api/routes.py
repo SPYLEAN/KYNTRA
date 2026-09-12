@@ -169,3 +169,316 @@ def evaluate_custom_decision(req: DecisionRequest) -> DecisionSnapshot:
         battle_data=battle_data,
         simulated_energy_state=energy_data,
     )
+
+
+# ==============================================================================
+# Phase 4A Live Race Intelligence & Replay Control Endpoints
+# ==============================================================================
+
+class ReplayControlRequest(BaseModel):
+    """Payload for controlling replay stream."""
+    action: str = Field(..., description="pause | resume | seek | speed | set_event | select_battle | step")
+    lap: Optional[int] = None
+    speed: Optional[float] = None
+    event_id: Optional[str] = None
+    battle_id: Optional[str] = None
+
+
+@router.get("/live/state")
+def get_live_race_state() -> Dict[str, Any]:
+    """Retrieve current coherent RaceState and active field metrics."""
+    from kyntra.services.live_service import get_live_race_service
+    from kyntra.state.store import get_current_state_store
+
+    store = get_current_state_store()
+    state = store.get_race_state()
+    if state is None:
+        service = get_live_race_service()
+        res = service.step()
+        if res and "race_state" in res:
+            return res["race_state"]
+        raise HTTPException(status_code=503, detail="Race state initializing.")
+    return state.model_dump()
+
+
+@router.get("/live/battles")
+def get_live_battles() -> List[Dict[str, Any]]:
+    """Retrieve live battle watchlist ranked by transparent ordinal priority."""
+    from kyntra.services.live_service import get_live_race_service
+    from kyntra.state.store import get_current_state_store
+
+    store = get_current_state_store()
+    watchlist = store.get_watchlist()
+    if not watchlist:
+        service = get_live_race_service()
+        res = service.step()
+        if res and "watchlist" in res:
+            return res["watchlist"]
+    return [item.model_dump() for item in watchlist]
+
+
+@router.get("/live/decision")
+def get_live_decision() -> Dict[str, Any]:
+    """Retrieve current coherent DecisionSnapshot for the primary active battle."""
+    from kyntra.services.live_service import get_live_race_service
+    from kyntra.state.store import get_current_state_store
+
+    store = get_current_state_store()
+    snapshot = store.get_decision_snapshot()
+    if snapshot is None:
+        service = get_live_race_service()
+        res = service.step()
+        if res and res.get("decision"):
+            return res["decision"]
+        raise HTTPException(status_code=503, detail="Decision snapshot initializing.")
+    return snapshot.model_dump()
+
+
+@router.get("/events/history")
+def get_event_history(
+    race_id: Optional[str] = None,
+    event_type: Optional[str] = None,
+    min_lap: Optional[int] = None,
+    battle_id: Optional[str] = None,
+    limit: int = 50,
+) -> List[Dict[str, Any]]:
+    """Query persistent append-only race memory log."""
+    from kyntra.events.store import get_event_store
+
+    store = get_event_store()
+    events = store.get_events(
+        race_id=race_id,
+        event_type=event_type,
+        min_lap=min_lap,
+        battle_id=battle_id,
+        limit=limit,
+    )
+    return [e.model_dump() for e in events]
+
+
+@router.get("/events/markers")
+def get_timeline_markers(
+    race_id: Optional[str] = None,
+    limit: int = 150,
+) -> List[Dict[str, Any]]:
+    """Retrieve key milestone events with timestamps for timeline scrubber markers."""
+    from kyntra.events.store import get_event_store
+
+    store = get_event_store()
+    return store.get_timeline_markers(race_id=race_id, limit=limit)
+
+
+class ProviderSelectRequest(BaseModel):
+    provider_type: str = Field(..., description="OPENF1_LIVE | REPLAY | CAPTURED_LIVE")
+    session_key: Optional[str] = None
+    event_id: Optional[str] = None
+    capture_path: Optional[str] = None
+
+
+class CaptureControlRequest(BaseModel):
+    action: str = Field(..., description="start | stop")
+    session_id: Optional[str] = None
+
+
+@router.get("/providers/active")
+def get_active_provider() -> Dict[str, Any]:
+    """Retrieve active provider identity, capabilities, and data provenance."""
+    from kyntra.services.live_service import get_live_race_service
+
+    service = get_live_race_service()
+    meta = service.provider.get_metadata()
+    caps = service.provider.get_capabilities()
+    return {
+        "metadata": meta.model_dump(),
+        "capabilities": caps.model_dump(),
+        "is_capturing": hasattr(service.provider, "capture_writer") and service.provider.capture_writer is not None,
+    }
+
+
+@router.post("/providers/select")
+def select_provider(req: ProviderSelectRequest) -> Dict[str, Any]:
+    """Switch active provider with truthful provenance fallback."""
+    from kyntra.services.live_service import get_live_race_service
+
+    service = get_live_race_service()
+    meta = service.select_provider(
+        provider_type=req.provider_type,
+        session_key=req.session_key,
+        event_id=req.event_id,
+        capture_path=req.capture_path,
+    )
+    return {
+        "status": "OK",
+        "active_provider": meta.model_dump(),
+    }
+
+
+@router.get("/openf1/discovery")
+def discover_openf1(
+    query: str = "Spain",
+    year: int = 2026,
+    session_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Dynamically discover OpenF1 meeting and session keys (e.g. Madrid 2026)."""
+    from kyntra.ingestion.discovery import discover_openf1_session
+
+    return discover_openf1_session(query=query, year=year, session_name=session_name)
+
+
+@router.get("/captures")
+def list_captures() -> List[Dict[str, Any]]:
+    """List all available locally captured live sessions."""
+    from kyntra.ingestion.capture import list_captured_sessions
+
+    return list_captured_sessions()
+
+
+@router.post("/capture/control")
+def control_capture(req: CaptureControlRequest) -> Dict[str, Any]:
+    """Control local session capture recording (start or stop)."""
+    from kyntra.services.live_service import get_live_race_service
+
+    service = get_live_race_service()
+    if req.action == "start":
+        return service.start_capture(session_id=req.session_id)
+    elif req.action == "stop":
+        return service.stop_capture()
+    raise HTTPException(status_code=400, detail=f"Unknown capture action '{req.action}'. Expected 'start' or 'stop'.")
+
+
+@router.get("/system/providers")
+def get_providers_capability_matrix() -> Dict[str, Any]:
+    """Retrieve verified operational capability matrix for telemetry providers."""
+    return {
+        "providers": [
+            {
+                "id": "REPLAY_PROVIDER",
+                "name": "Historical Replay Provider",
+                "status": "OPERATIONAL (ACTIVE)",
+                "capabilities": {
+                    "race_timing": "AVAILABLE",
+                    "car_coordinates": "AVAILABLE",
+                    "speed_telemetry": "AVAILABLE",
+                    "tyre_compound_stint": "AVAILABLE",
+                    "track_flags": "AVAILABLE",
+                    "private_mgu_k_torque": "UNAVAILABLE",
+                    "actual_cell_soc": "UNAVAILABLE",
+                },
+                "notes": "Streams sequential historical ticks from verified demo holdout parquets without modification.",
+            },
+            {
+                "id": "OPENF1_LIVE_PROVIDER",
+                "name": "OpenF1 Real-Time Live Feed Provider",
+                "status": "AVAILABLE",
+                "capabilities": {
+                    "race_timing": "AVAILABLE",
+                    "car_coordinates": "AVAILABLE",
+                    "speed_telemetry": "AVAILABLE",
+                    "tyre_compound_stint": "AVAILABLE",
+                    "track_flags": "AVAILABLE",
+                    "private_mgu_k_torque": "UNAVAILABLE",
+                    "actual_cell_soc": "UNAVAILABLE",
+                },
+                "notes": "Real-time MQTT live pub/sub with resilient REST fallback. Fully normalized into RaceState.",
+            },
+            {
+                "id": "PUBLIC_LIVE_PROVIDER",
+                "name": "Public Live Timing Provider",
+                "status": "STANDBY",
+                "capabilities": {
+                    "race_timing": "AVAILABLE (SOCKET)",
+                    "car_coordinates": "INTERPOLATED",
+                    "speed_telemetry": "SECTOR_AVERAGE",
+                    "tyre_compound_stint": "AVAILABLE",
+                    "track_flags": "AVAILABLE",
+                    "private_mgu_k_torque": "UNAVAILABLE",
+                    "actual_cell_soc": "UNAVAILABLE",
+                },
+                "notes": "Low-latency WebSocket connector for public race timing feeds. Zero synthetic mock data.",
+            },
+            {
+                "id": "TEAM_TELEMETRY_PROVIDER",
+                "name": "Team CAN/ATLAS Telemetry Provider",
+                "status": "STANDBY / FUTURE",
+                "capabilities": {
+                    "race_timing": "AVAILABLE",
+                    "car_coordinates": "HIGH_ACCURACY_GPS",
+                    "speed_telemetry": "100Hz_HIGH_RATE",
+                    "tyre_compound_stint": "AVAILABLE_SENSOR",
+                    "track_flags": "AVAILABLE",
+                    "private_mgu_k_torque": "AVAILABLE",
+                    "actual_cell_soc": "AVAILABLE",
+                },
+                "notes": "Direct 100 Hz team telemetry ingress bus specification for private vehicle diagnostics.",
+            },
+        ]
+    }
+
+
+
+@router.post("/replay/control")
+def control_replay(req: ReplayControlRequest) -> Dict[str, Any]:
+    """Control continuous replay playback, seeking, speed, and event switching."""
+    from kyntra.services.live_service import get_live_race_service
+
+    service = get_live_race_service()
+
+    if req.action == "pause":
+        service.provider.pause()
+    elif req.action == "resume":
+        service.provider.resume()
+    elif req.action == "seek":
+        if req.lap is not None:
+            service.seek(req.lap)
+            service.step()
+    elif req.action == "speed":
+        if req.speed is not None:
+            service.provider.set_speed(req.speed)
+    elif req.action == "set_event":
+        if req.event_id is not None:
+            service.set_event(req.event_id)
+    elif req.action == "select_battle":
+        if req.battle_id is not None:
+            service.state_store.set_selected_battle_id(req.battle_id)
+            service.step()
+    elif req.action == "step":
+        service.step()
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown action '{req.action}'.")
+
+    return {
+        "status": "OK",
+        "action": req.action,
+        "event_id": service.event_id,
+        "is_paused": getattr(service.provider, "_is_paused", False),
+        "playback_speed": getattr(service.provider, "_playback_speed", 1.0),
+        "current_lap": getattr(service.state_store.get_race_state(), "session", None) and service.state_store.get_race_state().session.current_lap,
+    }
+
+
+@router.get("/track/{event_id}")
+def get_track_geometry(event_id: str) -> Dict[str, Any]:
+    """Retrieve normalized 2D vector coordinate path for Digital Track Twin."""
+    from kyntra.processing.circuit_twin import get_circuit_geometry
+
+    return get_circuit_geometry(event_id)
+
+
+@router.get("/forecast/{event_id}")
+def get_forecast(event_id: str) -> Dict[str, Any]:
+    """Retrieve forward Monte-Carlo simulation batch status and outcomes.
+
+    TRUTH GATE (Phase 5B):
+    Forward Monte-Carlo simulation batch is uncalibrated on this deployment.
+    Returns status='UNAVAILABLE' and run_count=0 to prevent artificial distribution fabrication.
+    """
+    return {
+        "status": "UNAVAILABLE",
+        "run_count": 0,
+        "scenarios": [],
+        "provenance": "FORECAST_SIMULATION",
+        "message": "FORECAST NOT AVAILABLE — Forward Monte-Carlo simulation batch pending empirical calibration.",
+        "event_id": event_id,
+    }
+
+

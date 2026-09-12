@@ -145,6 +145,28 @@ python scripts/build_race.py --year 2024 --grand-prix Bahrain --session R
 
 ---
 
+## 🚀 Running the KYNTRA Live Command Center
+
+KYNTRA uses a clean `src/` layout. Run the backend server without relying on accidental `PYTHONPATH` state:
+
+### Backend (FastAPI + WebSocket Live Core):
+```bash
+# Option A (Direct invocation specifying --app-dir):
+py -3.12 -m uvicorn kyntra.api.app:app --app-dir src --host 127.0.0.1 --port 8000 --reload
+
+# Option B (Editable installation):
+py -3.12 -m pip install -e .
+py -3.12 -m uvicorn kyntra.api.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### Frontend (React 19 + TypeScript + Vite Command Center):
+```bash
+cd web
+npm run dev
+```
+
+---
+
 ## 🧪 Running Tests
 
 Execute the full automated test suite with pytest:
