@@ -76,8 +76,8 @@ export const EnergyHorizonPanel: React.FC<EnergyHorizonPanelProps> = ({
       timestamp: new Date().toISOString(),
       configIdentities: {
         'Regulation Standard': 'FIA 2026 Issue 20 Annex B',
-        'Kinetic Deployment Cap': '4.00 MJ per lap',
-        'MGU-K Motor Limit': '350 kW (Straightline Taper 290-345 km/h)',
+        'Kinetic Deployment Window': '4.00 MJ USABLE SOC WINDOW per lap',
+        'MGU-K Power Limit': 'MGU-K MAXIMUM POWER LIMIT — 350 kW (Straightline Taper 290-345 km/h)',
         'Assumption Profile': scenarioProfile,
       },
       technicalEvidence: [
@@ -256,13 +256,13 @@ export const EnergyHorizonPanel: React.FC<EnergyHorizonPanelProps> = ({
           <div className="footer-item">
             <span className="item-lbl text-muted">USABLE SOC WINDOW:</span>
             <span className="item-val mono-num font-bold text-primary">
-              {beforeEnergy.toFixed(2)} / 4.00 MJ REGULATION CAP
+              {beforeEnergy.toFixed(2)} / 4.00 MJ USABLE SOC WINDOW
             </span>
           </div>
           <div className="footer-item">
-            <span className="item-lbl text-muted">MGU-K POWER:</span>
+            <span className="item-lbl text-muted">MGU-K LIMIT:</span>
             <span className="item-val mono-num font-bold text-secondary">
-              350 kW LIMIT
+              MGU-K MAXIMUM POWER LIMIT — 350 kW
             </span>
           </div>
           <div className="footer-item">

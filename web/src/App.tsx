@@ -200,6 +200,7 @@ export default function App() {
       onCloseEvidence={handleCloseEvidence}
       onOpenSessionSwitcher={() => setSessionSwitcherOpen(true)}
       onOpenShortcuts={() => setShortcutsOpen(true)}
+      onSendCommand={sendCommand}
     >
       {/* Dynamic Viewport Content */}
       {currentContext === 'RACE' ? (
@@ -231,7 +232,13 @@ export default function App() {
       ) : currentContext === 'EVENTS' ? (
         <EventsWorkspace
           events={recentEvents}
+          runtimeSnapshot={runtimeSnapshot}
+          decision={decision}
+          decisionHistory={decisionHistory}
+          selectedBattleId={selectedBattleId}
+          operatingMode={operatingMode}
           onJumpToLap={(lap) => sendCommand({ action: 'seek', lap })}
+          onOpenEvidence={handleOpenEvidence}
         />
       ) : currentContext === 'ANALYSIS' ? (
         <AnalysisWorkspace

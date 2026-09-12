@@ -96,7 +96,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({ target, onClose 
               SIMULATED ENERGY — NOT MEASURED BATTERY SOC
             </div>
             <p className="warning-sub text-muted">
-              Derived from FIA 2026 TR 4.00 MJ/lap kinetic buffer model &amp; 350 kW motor limits. Usable window simulation only; does not represent physical cell electrochemical telemetry.
+              Derived from FIA 2026 TR 4.00 MJ USABLE SOC WINDOW per lap &amp; MGU-K MAXIMUM POWER LIMIT — 350 kW. Usable window simulation only; does not represent physical cell electrochemical telemetry.
             </p>
           </div>
         </div>

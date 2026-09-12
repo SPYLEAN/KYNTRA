@@ -233,13 +233,18 @@ export const DecisionDependencyGraph: React.FC<DecisionDependencyGraphProps> = (
             title="Click to inspect Tier 4 Future Window evidence"
           >
             <div className="window-node-content mono">
-              <span className="w-tag font-bold text-muted">TIER 04 // OPPORTUNITY HORIZON:</span>
-              <span className="w-val font-bold text-primary">
-                {winnerActionData?.future_opportunity?.expected_window_strength ?? 'PEAKING OPPORTUNITY'}
-              </span>
-              <span className="w-detail text-accent font-bold">
-                +{winnerActionData?.future_opportunity?.next_lap_energy_headroom_mj?.toFixed(2) ?? '2.40'} MJ HEADROOM
-              </span>
+              <div className="w-item-group">
+                <span className="w-tag font-bold text-muted">TIER 04 // FUTURE OPPORTUNITY:</span>
+                <span className="w-val font-bold text-primary">
+                  {winnerActionData?.future_opportunity?.expected_window_strength ?? 'PEAKING OPPORTUNITY'}
+                </span>
+              </div>
+              <div className="w-item-group">
+                <span className="w-tag font-bold text-muted">NEXT LAP ENERGY HEADROOM:</span>
+                <span className="w-detail text-accent font-bold">
+                  +{winnerActionData?.future_opportunity?.next_lap_energy_headroom_mj?.toFixed(2) ?? '2.40'} MJ USABLE SOC BUFFER
+                </span>
+              </div>
             </div>
           </div>
         </div>

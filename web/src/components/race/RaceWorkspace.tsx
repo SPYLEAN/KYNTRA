@@ -274,12 +274,12 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
                     </span>
                   </div>
                   <div className="quad-item">
-                    <span className="q-lbl text-muted">MGU-K DEPLOYMENT CAP</span>
-                    <span className="q-val font-bold mono-num">4.00 MJ / LAP</span>
+                    <span className="q-lbl text-muted">USABLE SOC WINDOW</span>
+                    <span className="q-val font-bold mono-num">4.00 MJ USABLE SOC WINDOW</span>
                   </div>
                   <div className="quad-item">
-                    <span className="q-lbl text-muted">POWER LIMIT (2026 TR)</span>
-                    <span className="q-val font-bold mono-num">350 kW</span>
+                    <span className="q-lbl text-muted">MGU-K LIMIT</span>
+                    <span className="q-val font-bold mono-num">MGU-K MAXIMUM POWER LIMIT — 350 kW</span>
                   </div>
                   <div className="quad-item">
                     <span className="q-lbl text-muted">PROVENANCE</span>

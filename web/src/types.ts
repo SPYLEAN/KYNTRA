@@ -556,6 +556,8 @@ export type ProvenanceType =
   | 'STRATEGY RANKING'
   | 'DECISION GATE'
   | 'HISTORICAL'
+  | 'BATTLE MEMORY'
+  | 'STATE TRANSITION DIFF'
   | 'UNKNOWN'
   | 'CONFIG_ASSUMPTION';
 

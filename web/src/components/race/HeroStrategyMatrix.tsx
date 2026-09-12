@@ -238,7 +238,7 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
                         method: '4.0MJ/Lap Kinetic Buffer State Model',
                         evidenceItems: [
                           { label: 'Before Energy', value: `${e?.before_energy_mj?.toFixed(2) || '3.20'} MJ` },
-                          { label: 'Max Cap', value: '4.00 MJ' },
+                          { label: 'Usable SOC Window', value: '4.00 MJ USABLE SOC WINDOW' },
                           { label: 'Assumption Profile', value: e?.assumption_profile || 'NOMINAL' },
                         ],
                       })
