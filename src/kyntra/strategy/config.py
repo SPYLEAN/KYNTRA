@@ -131,3 +131,87 @@ def load_strategy_counterfactual_config(
     _CACHED_CONFIG = parsed
     _CACHED_CONFIG_PATH = path
     return parsed
+
+
+DEFAULT_STRATEGY_RANKING_CONFIG_PATH = Path("configs/strategy_ranking_v1.yaml")
+
+
+@dataclass
+class StrategyRankingConfig:
+    version: str
+    description: str
+    lap_time_tolerance_s: float
+    terminal_energy_tolerance_mj: float
+    kinematic_gap_threshold_s: float
+    kinematic_min_p2: float
+    min_initial_energy_mj: float
+    raw_config: Dict[str, Any]
+    sha256: str
+
+
+_CACHED_RANKING_CONFIG: Optional[StrategyRankingConfig] = None
+_CACHED_RANKING_CONFIG_PATH: Optional[Path] = None
+
+
+def load_strategy_ranking_config(
+    config_path: Optional[Path] = None,
+    reload: bool = False,
+) -> StrategyRankingConfig:
+    """Load and validate the versioned strategy ranking configuration.
+
+    Computes SHA-256 of the configuration file to guarantee provenance and auditability.
+    """
+    global _CACHED_RANKING_CONFIG, _CACHED_RANKING_CONFIG_PATH
+    path = config_path or DEFAULT_STRATEGY_RANKING_CONFIG_PATH
+
+    if not reload and _CACHED_RANKING_CONFIG is not None and _CACHED_RANKING_CONFIG_PATH == path:
+        return _CACHED_RANKING_CONFIG
+
+    if not path.exists():
+        logger.warning("Strategy ranking config not found at %s. Using default assumption values.", path)
+        return StrategyRankingConfig(
+            version="1.0.0-FALLBACK",
+            description="Fallback assumption values",
+            lap_time_tolerance_s=0.05,
+            terminal_energy_tolerance_mj=0.05,
+            kinematic_gap_threshold_s=0.80,
+            kinematic_min_p2=0.35,
+            min_initial_energy_mj=0.40,
+            raw_config={},
+            sha256="UNAVAILABLE",
+        )
+
+    with open(path, "rb") as f:
+        content_bytes = f.read()
+        sha256_hash = hashlib.sha256(content_bytes).hexdigest()
+
+    data = yaml.safe_load(content_bytes.decode("utf-8")) or {}
+
+    version = str(data.get("version", "1.0.0"))
+    desc = str(data.get("description", ""))
+
+    lap_tol = float(data.get("lap_time_comparison_tolerance_s", {}).get("value", 0.05))
+    e_tol = float(data.get("terminal_energy_comparison_tolerance_mj", {}).get("value", 0.05))
+
+    kin_cfg = data.get("kinematic_opportunity_deficit", {})
+    gap_thresh = float(kin_cfg.get("gap_threshold_s", {}).get("value", 0.80))
+    min_p2 = float(kin_cfg.get("min_p2_threshold", {}).get("value", 0.35))
+
+    e_inf_cfg = data.get("energy_infeasibility_threshold", {})
+    min_init_e = float(e_inf_cfg.get("min_initial_energy_mj", {}).get("value", 0.40))
+
+    parsed = StrategyRankingConfig(
+        version=version,
+        description=desc,
+        lap_time_tolerance_s=lap_tol,
+        terminal_energy_tolerance_mj=e_tol,
+        kinematic_gap_threshold_s=gap_thresh,
+        kinematic_min_p2=min_p2,
+        min_initial_energy_mj=min_init_e,
+        raw_config=data,
+        sha256=sha256_hash,
+    )
+
+    _CACHED_RANKING_CONFIG = parsed
+    _CACHED_RANKING_CONFIG_PATH = path
+    return parsed

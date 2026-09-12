@@ -15,13 +15,20 @@ STRICT INVARIANTS:
 4. SCENARIO SENSITIVITY: Evaluates Conservative, Nominal, and Favorable independently.
 5. ROBUSTNESS: Emits ROBUST_WITHIN_TESTED_ASSUMPTIONS only when all 3 scenarios align.
 6. ORDER INDEPENDENCE: Input action sequence cannot alter ranking results.
+7. ZERO ANONYMOUS CONSTANTS: All comparison tolerances and heuristic thresholds
+   are sourced from versioned StrategyRankingConfig and StrategyCounterfactualConfig.
 """
 
 from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from kyntra.strategy.config import StrategyCounterfactualConfig, load_strategy_counterfactual_config
+from kyntra.strategy.config import (
+    StrategyCounterfactualConfig,
+    StrategyRankingConfig,
+    load_strategy_counterfactual_config,
+    load_strategy_ranking_config,
+)
 from kyntra.strategy.models import (
     ActionEvaluationTrace,
     ActionOutcomeSnapshot,
@@ -33,6 +40,9 @@ from kyntra.strategy.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# FIA 2026 Technical Regulation Maximum Energy Store Usable Capacity (MJ/lap)
+FIA_2026_MAX_ES_CAPACITY_MJ: float = 4.0
 
 # Future window ordinal ranks (higher is better; UNKNOWN handled strictly)
 FUTURE_WINDOW_ORDINAL = {
@@ -47,6 +57,9 @@ def evaluate_action_eligibility(
     action_outcome: ActionOutcomeSnapshot,
 ) -> Tuple[bool, Optional[str], Optional[str]]:
     """Tier 1: Evaluate regulatory eligibility.
+
+    Consumes ActionRuleCheckSnapshot from the verified regulation engine.
+    Does NOT independently interpret or invent FIA articles.
 
     Returns:
         (is_eligible, exclusion_reason, excluded_at)
@@ -63,7 +76,7 @@ def evaluate_action_eligibility(
             reason = f"REGULATION_UNCERTAINTY: {action_outcome.rule_check.rule_ids}"
             return False, reason, StrategyCriterion.REGULATORY_ELIGIBILITY.value
         # For defensive / neutral actions (CONSERVE/BUILD/DEPLOY), green running assumption permits continuation
-        # but notes uncertainty
+        # but notes uncertainty in trace
         return True, None, None
 
     return True, None, None
@@ -94,8 +107,9 @@ def evaluate_energy_feasibility(
             reason = "ZERO_INITIAL_ENERGY_STORE_DEPLETED"
             return False, reason, StrategyCriterion.PHYSICAL_ENERGY_FEASIBILITY.value
 
-    # Check if required deployment is physically impossible under 2026 4.0 MJ usable window
-    if sc_snap.deployment_mj > 4.0 * (action_outcome.forecast.horizon_laps or 3):
+    # Check if required deployment is physically impossible under 2026 MGU-K usable window
+    horizon = action_outcome.forecast.horizon_laps or 3
+    if sc_snap.deployment_mj > (FIA_2026_MAX_ES_CAPACITY_MJ * horizon):
         reason = "DEPLOYMENT_EXCEEDS_PHYSICAL_MGU_K_WINDOW"
         return False, reason, StrategyCriterion.PHYSICAL_ENERGY_FEASIBILITY.value
 
@@ -106,11 +120,14 @@ def rank_scenario_actions(
     actions: Dict[str, ActionOutcomeSnapshot],
     scenario_name: str,
     battle_data: Optional[Dict[str, Any]] = None,
+    ranking_config: Optional[StrategyRankingConfig] = None,
 ) -> ScenarioRankingResult:
     """Execute complete 6-tier lexicographic comparison for one energy scenario.
 
     Guarantees action-order independence by sorting action keys deterministically.
+    All comparison tolerances are loaded from versioned StrategyRankingConfig.
     """
+    ranking_cfg = ranking_config or load_strategy_ranking_config()
     sorted_action_names = sorted(actions.keys())
     comparison_trace: List[str] = []
     traces: Dict[str, ActionEvaluationTrace] = {}
@@ -270,7 +287,8 @@ def rank_scenario_actions(
     # TIER 5: CUMULATIVE LAP-TIME CONSEQUENCE
     # --------------------------------------------------------------------------
     # Lower is strictly better (e.g. -0.60s < -0.15s < +0.90s)
-    # Numerical tolerance epsilon = 0.02s
+    # Comparison tolerance is sourced from versioned StrategyRankingConfig
+    lap_tol = ranking_cfg.lap_time_tolerance_s
     time_consequences: Dict[str, float] = {}
     has_valid_times = True
     for cand in selectable_candidates:
@@ -286,13 +304,13 @@ def rank_scenario_actions(
         tier5_survivors = []
         for cand in selectable_candidates:
             t_val = time_consequences[cand]
-            if abs(t_val - min_time) <= 0.02:
+            if abs(t_val - min_time) <= lap_tol:
                 tier5_survivors.append(cand)
-            elif t_val > (min_time + 0.02):
+            elif t_val > (min_time + lap_tol):
                 traces[cand].selectable = False
                 traces[cand].excluded_at = StrategyCriterion.CUMULATIVE_LAP_TIME.value
                 traces[cand].exclusion_reasons.append(
-                    f"SLOWER_LAP_TIME: {t_val:.2f}s vs fastest {min_time:.2f}s"
+                    f"SLOWER_LAP_TIME: {t_val:.2f}s vs fastest {min_time:.2f}s (tolerance {lap_tol}s)"
                 )
                 comparison_trace.append(f"{cand} eliminated at TIER 5: cumulative lap time {t_val:.2f}s is slower.")
         if tier5_survivors:
@@ -312,7 +330,9 @@ def rank_scenario_actions(
     # --------------------------------------------------------------------------
     # TIER 6: TERMINAL SIMULATED ENERGY
     # --------------------------------------------------------------------------
-    # Higher is strictly better (e.g. 3.2 MJ > 2.5 MJ). Epsilon = 0.05 MJ
+    # Higher is strictly better (e.g. 3.2 MJ > 2.5 MJ).
+    # Comparison tolerance is sourced from versioned StrategyRankingConfig
+    e_tol = ranking_cfg.terminal_energy_tolerance_mj
     terminal_energies: Dict[str, float] = {}
     has_valid_energy = True
     for cand in selectable_candidates:
@@ -329,13 +349,13 @@ def rank_scenario_actions(
         tier6_survivors = []
         for cand in selectable_candidates:
             e_val = terminal_energies[cand]
-            if abs(e_val - max_energy) <= 0.05:
+            if abs(e_val - max_energy) <= e_tol:
                 tier6_survivors.append(cand)
-            elif e_val < (max_energy - 0.05):
+            elif e_val < (max_energy - e_tol):
                 traces[cand].selectable = False
                 traces[cand].excluded_at = StrategyCriterion.TERMINAL_SIMULATED_ENERGY.value
                 traces[cand].exclusion_reasons.append(
-                    f"LOWER_TERMINAL_ENERGY: {e_val:.2f} MJ vs highest {max_energy:.2f} MJ"
+                    f"LOWER_TERMINAL_ENERGY: {e_val:.2f} MJ vs highest {max_energy:.2f} MJ (tolerance {e_tol} MJ)"
                 )
                 comparison_trace.append(f"{cand} eliminated at TIER 6: lower terminal simulated energy.")
         if tier6_survivors:
@@ -373,6 +393,8 @@ def evaluate_lexicographic_ranking(
     matrix_actions: Dict[str, ActionOutcomeSnapshot],
     strategy_config: Optional[StrategyCounterfactualConfig] = None,
     battle_data: Optional[Dict[str, Any]] = None,
+    ranking_config: Optional[StrategyRankingConfig] = None,
+    matrix_metadata: Optional[Dict[str, Any]] = None,
 ) -> StrategyRankingSnapshot:
     """Execute complete multi-scenario lexicographic ranking and robustness assessment.
 
@@ -380,12 +402,16 @@ def evaluate_lexicographic_ranking(
         matrix_actions: Dict of action names (CONSERVE, BUILD, DEPLOY, OVERTAKE) to ActionOutcomeSnapshots.
         strategy_config: Active strategy counterfactual configuration.
         battle_data: Telemetry dictionary of battle features.
+        ranking_config: Optional versioned ranking configuration.
+        matrix_metadata: Optional dictionary with model_sha256, stability_manifest_sha256, rule_bundle_version.
 
     Returns:
         StrategyRankingSnapshot: Full audit snapshot of ranking, traces, and robustness.
     """
     now_iso = datetime.now(timezone.utc).isoformat()
     cfg = strategy_config or load_strategy_counterfactual_config()
+    ranking_cfg = ranking_config or load_strategy_ranking_config()
+    meta = matrix_metadata or {}
 
     # Pre-check: Ensure all 4 actions exist
     expected_actions = {"CONSERVE", "BUILD", "DEPLOY", "OVERTAKE"}
@@ -398,8 +424,13 @@ def evaluate_lexicographic_ranking(
             robustness="INSUFFICIENT_INFORMATION",
             comparison_trace=["Matrix does not contain complete 4 discrete actions."],
             reason_codes=["INSUFFICIENT_INFORMATION"],
+            ranking_config_version=ranking_cfg.version,
+            ranking_config_sha256=ranking_cfg.sha256,
             strategy_config_version=cfg.version,
             strategy_config_sha256=cfg.sha256,
+            model_sha256=meta.get("model_sha256"),
+            stability_manifest_sha256=meta.get("stability_manifest_sha256"),
+            rule_bundle_version=meta.get("rule_bundle_version", "2026_FIA_ISSUE_20"),
             generated_at=now_iso,
         )
 
@@ -413,6 +444,7 @@ def evaluate_lexicographic_ranking(
             actions=matrix_actions,
             scenario_name=sc_name,
             battle_data=battle_data,
+            ranking_config=ranking_cfg,
         )
         scenario_results[sc_name] = res
         scenario_winners[sc_name] = res.winner
@@ -467,8 +499,13 @@ def evaluate_lexicographic_ranking(
         robustness=robustness,
         comparison_trace=comparison_trace,
         reason_codes=reason_codes,
+        ranking_config_version=ranking_cfg.version,
+        ranking_config_sha256=ranking_cfg.sha256,
         strategy_config_version=cfg.version,
         strategy_config_sha256=cfg.sha256,
+        model_sha256=meta.get("model_sha256"),
+        stability_manifest_sha256=meta.get("stability_manifest_sha256"),
+        rule_bundle_version=meta.get("rule_bundle_version", "2026_FIA_ISSUE_20"),
         generated_at=now_iso,
     )
 
@@ -477,6 +514,7 @@ def apply_strategy_ranking(
     matrix: Any,
     strategy_config: Optional[StrategyCounterfactualConfig] = None,
     battle_data: Optional[Dict[str, Any]] = None,
+    ranking_config: Optional[StrategyRankingConfig] = None,
 ) -> Any:
     """Run lexicographic ranking and candidate recommendation on a StrategyMatrixSnapshot.
 
@@ -484,6 +522,7 @@ def apply_strategy_ranking(
         matrix: StrategyMatrixSnapshot instance.
         strategy_config: Optional strategy counterfactual configuration.
         battle_data: Optional battle telemetry dictionary.
+        ranking_config: Optional strategy ranking configuration.
 
     Returns:
         StrategyMatrixSnapshot: Cloned and populated snapshot with ranking.available=True.
@@ -491,18 +530,28 @@ def apply_strategy_ranking(
     from kyntra.strategy.recommendation import generate_candidate_recommendation
 
     cfg = strategy_config or load_strategy_counterfactual_config()
+    ranking_cfg = ranking_config or load_strategy_ranking_config()
     b_data = battle_data or matrix.current_state_summary
+
+    matrix_meta = {
+        "model_sha256": getattr(matrix, "model_sha256", None),
+        "stability_manifest_sha256": getattr(matrix, "stability_manifest_sha256", None),
+        "rule_bundle_version": getattr(matrix, "rule_bundle_version", "2026_FIA_ISSUE_20"),
+    }
 
     ranking_snap = evaluate_lexicographic_ranking(
         matrix_actions=matrix.actions,
         strategy_config=cfg,
         battle_data=b_data,
+        ranking_config=ranking_cfg,
+        matrix_metadata=matrix_meta,
     )
 
     candidate_rec = generate_candidate_recommendation(
         ranking_snapshot=ranking_snap,
         matrix_actions=matrix.actions,
         battle_data=b_data,
+        ranking_config=ranking_cfg,
     )
 
     updated = matrix.model_copy(deep=True)
@@ -510,4 +559,3 @@ def apply_strategy_ranking(
     updated.recommendation = candidate_rec.model_dump()
     updated.reason = candidate_rec.primary_reason or "STRATEGY_MATRIX_EVALUATED"
     return updated
-

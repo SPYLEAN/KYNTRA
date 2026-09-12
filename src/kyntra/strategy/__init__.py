@@ -4,7 +4,9 @@ from kyntra.strategy.config import (
     ActionProfileConfig,
     ScenarioMultiplierConfig,
     StrategyCounterfactualConfig,
+    StrategyRankingConfig,
     load_strategy_counterfactual_config,
+    load_strategy_ranking_config,
 )
 from kyntra.strategy.counterfactuals import (
     evaluate_action_rule_check,
@@ -14,6 +16,7 @@ from kyntra.strategy.counterfactuals import (
     simulate_action_outcome,
 )
 from kyntra.strategy.explanations import (
+    EXPLANATION_TOKEN_DESCRIPTIONS,
     SUPPORTED_WHY_NOT_OVERTAKE_TOKENS,
     generate_why_not_overtake,
     generate_why_selected,
@@ -80,5 +83,8 @@ __all__ = [
     "generate_why_not_overtake",
     "UI_CALL_MAP",
     "SUPPORTED_WHY_NOT_OVERTAKE_TOKENS",
+    "EXPLANATION_TOKEN_DESCRIPTIONS",
+    "StrategyRankingConfig",
+    "load_strategy_ranking_config",
 ]
 

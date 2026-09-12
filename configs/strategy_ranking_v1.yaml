@@ -1,0 +1,48 @@
+# ==============================================================================
+# KYNTRA Strategy Ranking Configuration V1
+# Explicit Ranking Tolerances, Comparison Parameters & Explanation Thresholds
+# ==============================================================================
+# IMPORTANT: Values in this configuration represent KYNTRA V1 ranking
+# tolerances and explanation heuristic thresholds. They are CONFIG_ASSUMPTIONs
+# and are NOT FIA sporting regulations, empirical car calibrations, or
+# universal physical laws.
+# ==============================================================================
+
+version: "1.0.0"
+description: "Versioned configuration for 6-tier lexicographic strategy ranking and explanation generation"
+
+lap_time_comparison_tolerance_s:
+  value: 0.05
+  unit: "seconds"
+  status: "CONFIG_ASSUMPTION"
+  description: "Numerical equivalence band for comparing 3-lap projected cumulative lap time consequences"
+  rationale: "Differences smaller than 0.05s are within simulation noise and do not constitute a decisive pace superiority"
+
+terminal_energy_comparison_tolerance_mj:
+  value: 0.05
+  unit: "MJ"
+  status: "CONFIG_ASSUMPTION"
+  description: "Numerical equivalence band for comparing 3-lap projected terminal simulated energy states"
+  rationale: "Differences under 0.05 MJ are within rounding precision and do not constitute decisive energy superiority"
+
+kinematic_opportunity_deficit:
+  gap_threshold_s:
+    value: 0.80
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Battle gap distance beyond which immediate overtake is considered kinematically unprimed"
+    rationale: "Attacker outside typical close striking distance requires tactical closure before committing to pass attempt"
+  min_p2_threshold:
+    value: 0.35
+    unit: "probability"
+    status: "CONFIG_ASSUMPTION"
+    description: "P2 pass window probability floor below which kinematic opportunity deficit is flagged"
+    rationale: "Model-projected pass probability below 0.35 indicates low kinematic attack viability in the current lap window"
+
+energy_infeasibility_threshold:
+  min_initial_energy_mj:
+    value: 0.40
+    unit: "MJ"
+    status: "CONFIG_ASSUMPTION"
+    description: "Minimum starting simulated energy required to support a counterfactual overtake deployment"
+    rationale: "Deployment is infeasible under simulated state when usable energy store is below baseline single-burst reserve"

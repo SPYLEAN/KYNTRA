@@ -6,10 +6,12 @@ Produces transparent, evidence-backed rationale tokens for:
 
 CRITICAL INVARIANT:
 Zero LLM hallucination or synthetic filler. Every explanation token corresponds
-strictly to verified regulatory, stability, energy, or kinematic battle evidence.
+strictly to verified regulatory, stability, simulated energy, or kinematic battle evidence.
+All numerical evaluation thresholds are loaded from versioned StrategyRankingConfig (CONFIG_ASSUMPTION).
 """
 
 from typing import Any, Dict, List, Optional
+from kyntra.strategy.config import StrategyRankingConfig, load_strategy_ranking_config
 from kyntra.strategy.models import ActionOutcomeSnapshot, FutureWindowQuality, StrategistAction
 
 
@@ -23,6 +25,19 @@ SUPPORTED_WHY_NOT_OVERTAKE_TOKENS = {
     "ENERGY_SENSITIVITY",
     "INSUFFICIENT_INFORMATION",
     "STRATEGY_TIE",
+}
+
+# Standardized deterministic explanation dictionary
+EXPLANATION_TOKEN_DESCRIPTIONS: Dict[str, str] = {
+    "RULE_RESTRICTION": "Overtake mode is prohibited under current FIA sporting regulations or active track neutralizations.",
+    "ENERGY_INFEASIBILITY": "The selected counterfactual deployment is infeasible under the current SIMULATED ENERGY STATE and active regulation-constrained deployment limits.",
+    "POST_PASS_INSTABILITY": "Stability V1 consensus flags high risk of immediate counter-attack or position loss post-pass.",
+    "FUTURE_WINDOW_DOMINANCE": "Alternative action establishes superior forward attack window without immediate high-depletion commitment.",
+    "REAR_THREAT": "Attacker faces high closing rate from vehicle behind, elevating defensive exposure.",
+    "KINEMATIC_OPPORTUNITY_DEFICIT": "Current battle kinematics (gap and closing rate trend relative to P1/P2/P3 context) indicate unprimed immediate pass conditions.",
+    "ENERGY_SENSITIVITY": "Overtake viability collapses or diverges under conservative energy recovery assumptions.",
+    "INSUFFICIENT_INFORMATION": "Critical regulatory, energy telemetry, or stability evidence is unverified or unavailable.",
+    "STRATEGY_TIE": "Alternative actions remain tied across all 6 lexicographic tiers, requiring pit-wall human judgment.",
 }
 
 
@@ -73,15 +88,17 @@ def generate_why_not_overtake(
     battle_data: Optional[Dict[str, Any]] = None,
     is_tie: bool = False,
     is_insufficient_info: bool = False,
+    ranking_config: Optional[StrategyRankingConfig] = None,
 ) -> List[str]:
     """Generate deterministic 'WHY NOT OVERTAKE NOW?' evidence tokens and explanations.
 
     Mandatory whenever candidate action is NOT OVERTAKE.
-    Must return a list of verified tokens and detailed explanations.
+    Must return a list of verified tokens tracing strictly to observed runtime evidence.
     """
     if selected_action == StrategistAction.OVERTAKE.value:
         return []
 
+    cfg = ranking_config or load_strategy_ranking_config()
     tokens: List[str] = []
 
     if is_tie:
@@ -102,10 +119,14 @@ def generate_why_not_overtake(
     elif rule_res == "UNKNOWN":
         tokens.append("INSUFFICIENT_INFORMATION")
 
-    # 2. Physical & Energy Infeasibility
+    # 2. Physical & Simulated Energy Infeasibility
+    # Note: 350 kW is a power limit, not energy. We evaluate simulated state against initial reserve threshold.
     if not overtake_outcome.energy.available:
         tokens.append("INSUFFICIENT_INFORMATION")
-    elif overtake_outcome.energy.before_mj is not None and overtake_outcome.energy.before_mj < 0.40:
+    elif (
+        overtake_outcome.energy.before_mj is not None
+        and overtake_outcome.energy.before_mj < cfg.min_initial_energy_mj
+    ):
         tokens.append("ENERGY_INFEASIBILITY")
 
     # 3. Post-Pass Instability (Stability V1 HIGH_RISK)
@@ -116,15 +137,25 @@ def generate_why_not_overtake(
     if selected_action in [StrategistAction.BUILD.value, StrategistAction.DEPLOY.value]:
         tokens.append("FUTURE_WINDOW_DOMINANCE")
 
-    # 5. Rear Threat Pressure
-    rear_threat = (battle_data or {}).get("rear_threat") or overtake_outcome.forecast.rear_threat
-    if rear_threat == "HIGH":
+    # 5. Rear Threat Pressure (Must be backed by genuine runtime battle_data observable)
+    runtime_rear = (battle_data or {}).get("rear_threat")
+    if runtime_rear == "HIGH":
         tokens.append("REAR_THREAT")
 
     # 6. Kinematic Opportunity Deficit
     p2 = overtake_outcome.pass_context.current_p2
     gap_s = (battle_data or {}).get("gap_seconds")
-    if (p2 is not None and p2 < 0.35) or (gap_s is not None and gap_s > 1.2):
+    closing_rate = (battle_data or {}).get("closing_rate")
+
+    kinematic_deficit = False
+    if p2 is not None and p2 < cfg.kinematic_min_p2:
+        kinematic_deficit = True
+    elif gap_s is not None and gap_s > cfg.kinematic_gap_threshold_s:
+        # Gap exceeds threshold while closing rate is absent or non-positive
+        if closing_rate is None or closing_rate <= 0.0:
+            kinematic_deficit = True
+
+    if kinematic_deficit:
         tokens.append("KINEMATIC_OPPORTUNITY_DEFICIT")
 
     # 7. Energy Sensitivity (e.g. fails under Conservative)

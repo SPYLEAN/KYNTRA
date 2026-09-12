@@ -33,10 +33,14 @@ UI_CALL_MAP = {
 }
 
 
+from kyntra.strategy.config import StrategyRankingConfig
+
+
 def generate_candidate_recommendation(
     ranking_snapshot: StrategyRankingSnapshot,
     matrix_actions: Dict[str, ActionOutcomeSnapshot],
     battle_data: Optional[Dict[str, Any]] = None,
+    ranking_config: Optional[StrategyRankingConfig] = None,
 ) -> CandidateRecommendation:
     """Synthesize candidate strategist call from lexicographic ranking results.
 
@@ -50,6 +54,7 @@ def generate_candidate_recommendation(
             selected_action=None,
             is_insufficient_info=True,
             battle_data=battle_data,
+            ranking_config=ranking_config,
         )
         return CandidateRecommendation(
             available=False,
@@ -80,6 +85,7 @@ def generate_candidate_recommendation(
             selected_action=None,
             is_tie=True,
             battle_data=battle_data,
+            ranking_config=ranking_config,
         )
         return CandidateRecommendation(
             available=False,
@@ -102,6 +108,7 @@ def generate_candidate_recommendation(
             selected_action=None,
             is_insufficient_info=True,
             battle_data=battle_data,
+            ranking_config=ranking_config,
         )
         return CandidateRecommendation(
             available=False,
@@ -140,6 +147,7 @@ def generate_candidate_recommendation(
         selected_action=nominal_winner,
         robustness=robustness,
         battle_data=battle_data,
+        ranking_config=ranking_config,
     )
 
     primary_reason = f"LEXICOGRAPHIC_WINNER_{nominal_winner}"

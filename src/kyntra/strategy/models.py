@@ -217,8 +217,13 @@ class StrategyRankingSnapshot(BaseModel):
     robustness: str = "INSUFFICIENT_INFORMATION"  # ROBUST_WITHIN_TESTED_ASSUMPTIONS | ENERGY_SENSITIVE | INSUFFICIENT_INFORMATION
     comparison_trace: List[str] = Field(default_factory=list)
     reason_codes: List[str] = Field(default_factory=list)
+    ranking_config_version: str = "1.0.0"
+    ranking_config_sha256: Optional[str] = None
     strategy_config_version: str = "1.0.0"
     strategy_config_sha256: Optional[str] = None
+    model_sha256: Optional[str] = None
+    stability_manifest_sha256: Optional[str] = None
+    rule_bundle_version: str = "2026_FIA_ISSUE_20"
     generated_at: str = Field(default_factory=str)
 
 
