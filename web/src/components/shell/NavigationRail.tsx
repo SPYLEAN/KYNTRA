@@ -21,7 +21,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   const navItems: { id: ContextWorkspace; label: string; shortcut: string }[] = [
     { id: 'RACE', label: 'RACE', shortcut: '1' },
     { id: 'STRATEGY', label: 'STRAT', shortcut: '2' },
-    { id: 'REPLAY', label: 'REPLAY', shortcut: '3' },
+    { id: 'EVENTS', label: 'EVENTS', shortcut: '3' },
     { id: 'ANALYSIS', label: 'ANLYS', shortcut: '4' },
     { id: 'SYSTEM', label: 'SYS', shortcut: '5' },
   ];

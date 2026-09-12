@@ -6588,34 +6588,459 @@ html, body, #root {
   margin-top: 4px;
 }
 
-/* 9. RESPONSIVE BREAKPOINT CONSTRAINTS (ZERO PAGE SCROLL) */
+/* ============================================================================
+   10. PERMANENT 3-COLUMN RACE COMMAND CENTER LAYOUT (LEFT 20% | CENTER 52% | RIGHT 28%)
+   ============================================================================ */
+
+.race-permanent-layout {
+  display: grid;
+  grid-template-columns: 20% 52% 28%;
+  height: calc(100vh - 42px);
+  max-height: calc(100vh - 42px);
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--bg-root);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* LEFT COLUMN: TIMING TOWER + BATTLE WATCHLIST */
+.race-col-left {
+  display: grid;
+  grid-template-rows: 58% 42%;
+  gap: 8px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.left-panel-timing,
+.left-panel-watchlist {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.left-panel-timing .panel-content-scroll,
+.left-panel-watchlist .panel-content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.panel-header-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background-color: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 11px;
+}
+
+.count-badge {
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 10px;
+}
+
+/* CENTER COLUMN: DIGITAL TRACK TWIN HERO + BOTTOM ANALYTICS STRIP */
+.race-col-center {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.center-twin-hero {
+  flex: 1;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.twin-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(11, 14, 18, 0.95) 0%, rgba(11, 14, 18, 0.6) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 5;
+}
+
+.twin-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.circuit-name {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.circuit-status {
+  font-size: 10px;
+  background: rgba(0, 229, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.battle-focus-pill {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+}
+
+.twin-svg-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.center-bottom-analytics {
+  height: 140px;
+  min-height: 140px;
+  max-height: 140px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.analytics-tabs-header {
+  display: flex;
+  background-color: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.analytics-tab-btn {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.analytics-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.analytics-tab-btn.active {
+  color: var(--accent-cyan);
+  border-bottom-color: var(--accent-cyan);
+  background-color: rgba(0, 229, 255, 0.04);
+  font-weight: bold;
+}
+
+.analytics-tab-viewport {
+  flex: 1;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.metric-quad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+  gap: 12px;
+}
+
+.quad-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quad-item .q-lbl {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.quad-item .q-val {
+  font-size: 16px;
+}
+
+.timeline-strip-list {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.timeline-micro-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+/* RIGHT COLUMN: ACTIVE BATTLE + HORIZONS + RULES + CALL + WHY */
+.race-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+
+.right-panel-battle,
+.right-panel-horizon,
+.right-panel-energy,
+.right-panel-rules-stability,
+.right-panel-call,
+.right-panel-whynot {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.battle-card-content {
+  padding: 10px 12px;
+}
+
+.battle-vs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.battle-vs-row .fighter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.battle-vs-row .fighter .role-tag {
+  font-size: 9px;
+  letter-spacing: 0.05em;
+}
+
+.battle-vs-row .fighter .code {
+  font-size: 18px;
+}
+
+.battle-vs-row .fighter .pos {
+  font-size: 11px;
+}
+
+.vs-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.vs-divider .gap-text {
+  font-size: 16px;
+}
+
+.vs-divider .rate-text {
+  font-size: 10px;
+}
+
+.energy-mini-card {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.energy-bar-track {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.energy-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7928ca 0%, #00e5ff 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.energy-labels {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.dual-chip-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+}
+
+.dual-chip-row .status-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.dual-chip-row .status-chip:hover {
+  border-color: var(--border-accent);
+}
+
+.status-chip.chip-ok .chip-val {
+  color: var(--call-valid);
+}
+
+.status-chip.chip-warn .chip-val {
+  color: var(--call-blocked);
+}
+
+/* TOP COMMAND BAR MODE SELECTOR */
+.command-mode-selector {
+  display: flex;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: bold;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+  color: var(--text-primary);
+}
+
+.mode-btn.active {
+  background-color: var(--bg-elevated);
+  color: var(--accent-cyan);
+}
+
+.mode-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--call-valid);
+}
+
+/* FIA FLAG COLORS */
+.telemetry-item.item-flag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.telemetry-item.item-flag .flag-bullet {
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+}
+
+.flag-green .flag-bullet {
+  background-color: #00e599;
+}
+.flag-green .t-val {
+  color: #00e599;
+}
+
+.flag-yellow .flag-bullet {
+  background-color: #ffb020;
+}
+.flag-yellow .t-val {
+  color: #ffb020;
+}
+
+.flag-sc .flag-bullet,
+.flag-vsc .flag-bullet {
+  background-color: #f59e0b;
+}
+.flag-sc .t-val,
+.flag-vsc .t-val {
+  color: #f59e0b;
+}
+
+.flag-red .flag-bullet {
+  background-color: #ff3b30;
+}
+.flag-red .t-val {
+  color: #ff3b30;
+}
+
+/* RESPONSIVE SCALING (ZERO DOCUMENT SCROLL) */
 @media (max-width: 1440px) {
-  .race-command-center-workspace {
-    grid-template-rows: 210px minmax(240px, 290px) 130px 1fr;
+  .race-permanent-layout {
+    grid-template-columns: 22% 48% 30%;
+    gap: 6px;
+    padding: 6px;
   }
-  .race-zone-upper {
-    grid-template-columns: 230px 1fr 250px;
+  .center-bottom-analytics {
+    height: 125px;
+    min-height: 125px;
+    max-height: 125px;
   }
-  .call-massive-label {
-    font-size: 22px;
+  .quad-item .q-val {
+    font-size: 14px;
   }
 }
 
 @media (max-width: 1366px) {
-  .race-command-center-workspace {
-    grid-template-rows: 190px minmax(220px, 270px) 120px 1fr;
+  .race-permanent-layout {
+    grid-template-columns: 22% 46% 32%;
     gap: 4px;
     padding: 4px;
   }
-  .race-zone-upper {
-    grid-template-columns: 210px 1fr 230px;
-    gap: 4px;
+  .center-bottom-analytics {
+    height: 115px;
+    min-height: 115px;
+    max-height: 115px;
   }
-  .strategy-matrix-table th.row-header-col {
-    width: 180px;
+  .analytics-tab-btn {
+    padding: 4px 10px;
+    font-size: 10px;
   }
-  .call-massive-label {
-    font-size: 20px;
+  .quad-item .q-val {
+    font-size: 13px;
   }
 }
 

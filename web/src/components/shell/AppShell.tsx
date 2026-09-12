@@ -10,12 +10,16 @@ import { NavigationRail } from './NavigationRail';
 import { TopCommandBar } from './TopCommandBar';
 import { EvidenceDrawer } from '../evidence/EvidenceDrawer';
 
+import type { OperatingMode } from '../../domain/types';
+
 interface AppShellProps {
   currentContext: ContextWorkspace;
   onSelectContext: (ctx: ContextWorkspace) => void;
   runtimeSnapshot: KyntraRuntimeSnapshot | null;
   raceState: RaceState | null;
   isStreaming: boolean;
+  operatingMode: OperatingMode;
+  onSelectOperatingMode: (mode: OperatingMode) => void;
   evidenceTarget: EvidenceInspectionTarget | null;
   onCloseEvidence: () => void;
   onOpenSessionSwitcher: () => void;
@@ -29,13 +33,16 @@ export const AppShell: React.FC<AppShellProps> = ({
   runtimeSnapshot,
   raceState,
   isStreaming,
+  operatingMode,
+  onSelectOperatingMode,
   evidenceTarget,
   onCloseEvidence,
   onOpenSessionSwitcher,
   onOpenShortcuts,
   children,
 }) => {
-  const runtimeMode = runtimeSnapshot?.mode || raceState?.session.source_mode || 'LIVE_FEED';
+  const runtimeMode = runtimeSnapshot?.mode || (operatingMode === 'REPLAY' ? 'HISTORICAL_REPLAY' : 'LIVE_FEED');
+
   const sourceProvider =
     runtimeSnapshot?.provider_status?.['provider'] ||
     raceState?.session.provider ||
@@ -50,6 +57,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         runtimeSnapshot={runtimeSnapshot}
         raceState={raceState}
         isStreaming={isStreaming}
+        operatingMode={operatingMode}
+        onSelectOperatingMode={onSelectOperatingMode}
         onOpenSessionSwitcher={onOpenSessionSwitcher}
         onOpenShortcuts={onOpenShortcuts}
         onOpenSystemInspector={() => onSelectContext('SYSTEM')}

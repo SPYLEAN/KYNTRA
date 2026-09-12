@@ -10,22 +10,23 @@ import type {
   RaceEvent,
   RaceState,
   SystemStatus,
-  TimelineMarker,
   TrackGeometry,
   WindowState,
 } from './types';
 import { AppShell } from './components/shell/AppShell';
 import { RaceWorkspace } from './components/race/RaceWorkspace';
 import { StrategyWorkspace } from './components/workspaces/StrategyWorkspace';
-import { ReplayWorkspace } from './components/workspaces/ReplayWorkspace';
+import { EventsWorkspace } from './components/workspaces/EventsWorkspace';
 import { AnalysisWorkspace } from './components/workspaces/AnalysisWorkspace';
 import { SystemWorkspace } from './components/workspaces/SystemWorkspace';
 import { SessionSwitcher } from './components/SessionSwitcher';
 import { KyntraApiClient } from './api/client';
+import type { OperatingMode } from './domain/types';
 
 export default function App() {
-  // Navigation & Workspace State: 5 Workspaces (RACE, STRATEGY, REPLAY, ANALYSIS, SYSTEM)
+  // Navigation & Workspace State: 5 Workspaces (RACE, STRATEGY, EVENTS, ANALYSIS, SYSTEM)
   const [currentContext, setCurrentContext] = useState<ContextWorkspace>('RACE');
+  const [operatingMode, setOperatingMode] = useState<OperatingMode>('LIVE');
   const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
 
   // Right-Side Universal Evidence Drawer Target
@@ -46,7 +47,6 @@ export default function App() {
   const [activeBattles, setActiveBattles] = useState<ActiveBattleTracker[]>([]);
   const [activeWindows, setActiveWindows] = useState<Record<string, WindowState>>({});
   const [recentEvents, setRecentEvents] = useState<RaceEvent[]>([]);
-  const [timelineMarkers, setTimelineMarkers] = useState<TimelineMarker[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [trackGeometry, setTrackGeometry] = useState<TrackGeometry | null>(null);
   const [decisionHistory, setDecisionHistory] = useState<any[]>([]);
@@ -66,10 +66,6 @@ export default function App() {
     let isMounted = true;
     KyntraApiClient.getTrackGeometry(eventId).then((geo) => {
       if (isMounted && geo) setTrackGeometry(geo);
-    });
-
-    KyntraApiClient.getTimelineMarkers(eventId).then((markers) => {
-      if (isMounted && markers) setTimelineMarkers(markers);
     });
 
     return () => {
@@ -249,12 +245,8 @@ export default function App() {
       sendControl({ action: 'set_event', event_id: newEventId });
 
       try {
-        const [geo, mark] = await Promise.all([
-          KyntraApiClient.getTrackGeometry(newEventId),
-          KyntraApiClient.getTimelineMarkers(newEventId),
-        ]);
+        const geo = await KyntraApiClient.getTrackGeometry(newEventId);
         if (geo) setTrackGeometry(geo);
-        if (mark) setTimelineMarkers(mark);
       } catch (err) {
         console.error('Session switch assets failed:', err);
       } finally {
@@ -323,6 +315,8 @@ export default function App() {
       runtimeSnapshot={runtimeSnapshot}
       raceState={raceState}
       isStreaming={wsConnected}
+      operatingMode={operatingMode}
+      onSelectOperatingMode={setOperatingMode}
       evidenceTarget={evidenceTarget}
       onCloseEvidence={handleCloseEvidence}
       onOpenSessionSwitcher={() => setSessionSwitcherOpen(true)}
@@ -353,59 +347,18 @@ export default function App() {
           decision={decision}
           onOpenEvidence={handleOpenEvidence}
         />
-      ) : currentContext === 'REPLAY' ? (
-        <ReplayWorkspace
-          geometry={trackGeometry}
-          cars={raceState?.cars || {}}
-          decision={decision}
-          watchlist={watchlist}
-          activeWindows={activeWindows}
-          selectedBattleId={selectedBattleId}
-          recentEvents={recentEvents}
-          timelineMarkers={timelineMarkers}
-          trackStatus={raceState?.track.track_status || '1'}
-          circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
-          currentLap={runtimeSnapshot?.current_lap ?? raceState?.session.current_lap ?? 0}
-          totalLaps={raceState?.session.total_laps ?? 53}
-          inspectorTarget={null}
-          onSelectBattle={handleSelectBattle}
-          onSelectCar={() => {}}
+      ) : currentContext === 'EVENTS' ? (
+        <EventsWorkspace
+          events={recentEvents}
           onJumpToLap={(lap) => sendControl({ action: 'seek', lap })}
-          onOpenInspector={(type) => {
-            handleOpenEvidence({
-              title: `Inspector: ${type}`,
-              value: 'INSPECT',
-              status: 'INFO',
-              provenance: 'LIVE',
-            });
-          }}
-          onCloseInspector={handleCloseEvidence}
-          onOpenBattleWorkspace={handleSelectBattle}
         />
       ) : currentContext === 'ANALYSIS' ? (
         <AnalysisWorkspace
-          geometry={trackGeometry}
-          cars={raceState?.cars || {}}
           decision={decision}
-          watchlist={watchlist}
-          activeWindows={activeWindows}
           selectedBattleId={selectedBattleId}
-          recentEvents={recentEvents}
-          trackStatus={raceState?.track.track_status || '1'}
-          circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
-          inspectorTarget={null}
+          watchlist={watchlist}
           onSelectBattle={handleSelectBattle}
-          onSelectCar={() => {}}
-          onJumpToLap={(lap) => sendControl({ action: 'seek', lap })}
-          onOpenInspector={(type) => {
-            handleOpenEvidence({
-              title: `Analysis Target: ${type}`,
-              value: 'ANALYSIS',
-              status: 'INFO',
-              provenance: 'DERIVED',
-            });
-          }}
-          onCloseInspector={handleCloseEvidence}
+          currentWindow={selectedBattleId ? activeWindows[selectedBattleId] : null}
         />
       ) : (
         /* SYSTEM Workspace */

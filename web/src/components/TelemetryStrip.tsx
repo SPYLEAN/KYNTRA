@@ -19,7 +19,7 @@ export const TelemetryStrip: React.FC<TelemetryStripProps> = ({
   const defenderCode = decision?.race.defender || 'DEF';
   const currentBattle = decision?.battle;
 
-  // Build SVG path points for P1, P2, P3
+  // Build SVG path points for P1, P2, P3 if genuine history exists
   const sparklineLines = useMemo(() => {
     const width = 480;
     const height = 44;
@@ -47,39 +47,12 @@ export const TelemetryStrip: React.FC<TelemetryStripProps> = ({
     };
   }, [history]);
 
-  // Telemetry traces for speed and gap over recent points
-  const telemetryTraces = useMemo(() => {
-    const width = 480;
-    const height = 44;
-    const gap = currentBattle?.gap_seconds;
-    const speedDelta = currentBattle?.speed_delta ?? 0;
-
-    // Use available battle dynamics
-    const points = Array.from({ length: 10 }, (_, i) => {
-      const t = i / 9;
-      const attS = 312 + speedDelta + Math.sin(t * Math.PI) * 4;
-      const defS = 312 + Math.cos(t * Math.PI) * 3;
-      const g = gap !== null && gap !== undefined ? Math.max(0.1, gap + (1 - t) * 0.08) : 0.5;
-      return { attS, defS, g };
-    });
-
-    const buildPath = (valFn: (p: typeof points[0]) => number, minVal: number, maxVal: number) => {
-      return points
-        .map((p, idx) => {
-          const x = (idx / (points.length - 1)) * width;
-          const norm = (valFn(p) - minVal) / (maxVal - minVal);
-          const y = height - Math.max(0, Math.min(1, norm)) * (height - 8) - 4;
-          return `${x.toFixed(1)},${y.toFixed(1)}`;
-        })
-        .join(' ');
-    };
-
-    return {
-      attSpeed: buildPath((p) => p.attS, 280, 345),
-      defSpeed: buildPath((p) => p.defS, 280, 345),
-      gap: buildPath((p) => p.g, 0, 2.5),
-    };
-  }, [currentBattle]);
+  const p1 = decision?.overtake.p_1_lap;
+  const p2 = decision?.overtake.p_2_laps;
+  const p3 = decision?.overtake.p_3_laps;
+  const gap = currentBattle?.gap_seconds;
+  const closingRate = currentBattle?.closing_rate;
+  const speedDelta = currentBattle?.speed_delta;
 
   return (
     <div className="telemetry-strip-pane">
@@ -103,7 +76,6 @@ export const TelemetryStrip: React.FC<TelemetryStripProps> = ({
         </div>
 
         <div className="strip-status-group">
-          <span className="model-age-tag mono">UPDATED 0.6s AGO</span>
           <span className={`window-tag window-${currentWindow?.window_state.toLowerCase() || 'unknown'}`}>
             {currentWindow?.window_state || 'UNKNOWN'}
           </span>
@@ -143,53 +115,56 @@ export const TelemetryStrip: React.FC<TelemetryStripProps> = ({
               </svg>
             ) : (
               <div className="building-window-notice mono text-muted">
-                BUILDING WINDOW HISTORY (Awaiting rolling observations)
+                {p1 != null
+                  ? `CURRENT HORIZON: P1=${(p1 * 100).toFixed(0)}%, P2=${p2 != null ? (p2 * 100).toFixed(0) : '—'}%, P3=${p3 != null ? (p3 * 100).toFixed(0) : '—'}%`
+                  : 'BUILDING WINDOW HISTORY (Awaiting rolling observations)'}
               </div>
             )}
 
             <div className="strip-footer-stats mono">
               <span className="stat-item">
-                P1 (&le;1L): <strong className="text-accent">{decision?.overtake.p_1_lap ? `${(decision.overtake.p_1_lap * 100).toFixed(0)}%` : '—'}</strong>
+                P1 (&le;1L): <strong className="text-accent">{p1 != null ? `${(p1 * 100).toFixed(0)}%` : '—'}</strong>
               </span>
               <span className="stat-item">
-                P2 (&le;2L): <strong>{decision?.overtake.p_2_laps ? `${(decision.overtake.p_2_laps * 100).toFixed(0)}%` : '—'}</strong>
+                P2 (&le;2L): <strong>{p2 != null ? `${(p2 * 100).toFixed(0)}%` : '—'}</strong>
               </span>
               <span className="stat-item">
-                P3 (&le;3L): <strong>{decision?.overtake.p_3_laps ? `${(decision.overtake.p_3_laps * 100).toFixed(0)}%` : '—'}</strong>
+                P3 (&le;3L): <strong>{p3 != null ? `${(p3 * 100).toFixed(0)}%` : '—'}</strong>
               </span>
               <span className="stat-item text-muted">
                 PAV: <strong>MONOTONIC</strong>
               </span>
               <span className="stat-item">
-                TREND: <strong>{currentWindow?.trend_direction || 'FLAT'}</strong>
+                TREND: <strong>{currentWindow?.trend_direction || 'STABLE'}</strong>
               </span>
             </div>
           </div>
         ) : (
-          /* SYNCHRONIZED TELEMETRY TRACES VIEW */
+          /* TELEMETRY TRACES VIEW (STRICT TRUTH: NO SYNTHETIC SINE WAVES) */
           <div className="trace-view-container">
-            <svg className="trace-svg" viewBox="0 0 480 44" preserveAspectRatio="none">
-              <line x1="0" y1="43" x2="480" y2="43" stroke="#1e293b" strokeWidth="1" />
-              {/* Attacker Speed: Cyan */}
-              <polyline fill="none" stroke="#00e5ff" strokeWidth="1.8" points={telemetryTraces.attSpeed} />
-              {/* Defender Speed: Coral/Pink */}
-              <polyline fill="none" stroke="#ff3366" strokeWidth="1.8" strokeDasharray="2 2" points={telemetryTraces.defSpeed} />
-              {/* Gap: Amber/Yellow */}
-              <polyline fill="none" stroke="#f59e0b" strokeWidth="1.2" points={telemetryTraces.gap} />
-            </svg>
+            <div className="building-window-notice mono text-muted">
+              {speedDelta != null
+                ? `LIVE SPEED DELTA: ${speedDelta > 0 ? '+' : ''}${speedDelta.toFixed(1)} km/h | GAP: ${gap != null ? `${gap.toFixed(2)}s` : '—'} | CLOSING: ${closingRate != null ? `${closingRate.toFixed(2)} m/s` : '—'}`
+                : 'HIGH-FREQUENCY TIME-SERIES TRACES UNAVAILABLE (Telemetry batch mode)'}
+            </div>
 
             <div className="strip-footer-stats mono">
               <span className="stat-item">
-                <span className="trace-legend-dot" style={{ backgroundColor: '#00e5ff' }} /> {attackerCode} SPD: <strong>{decision?.battle.speed_delta ? `+${decision.battle.speed_delta.toFixed(0)}` : '318'} km/h</strong>
+                {attackerCode} vs {defenderCode} SPEED DELTA:{' '}
+                <strong className="text-accent">
+                  {speedDelta != null ? `${speedDelta > 0 ? '+' : ''}${speedDelta.toFixed(1)} km/h` : '—'}
+                </strong>
               </span>
               <span className="stat-item">
-                <span className="trace-legend-dot" style={{ backgroundColor: '#ff3366' }} /> {defenderCode} SPD: <strong>312 km/h</strong>
+                GAP: <strong>{gap != null ? `${gap.toFixed(2)}s` : '—'}</strong>
               </span>
               <span className="stat-item">
-                <span className="trace-legend-dot" style={{ backgroundColor: '#f59e0b' }} /> GAP: <strong className="text-accent">{decision?.battle.gap_seconds?.toFixed(2) ?? '0.54'}s</strong>
-              </span>
-              <span className="stat-item">
-                CLOSING: <strong>{decision?.battle.closing_rate !== null && decision?.battle.closing_rate !== undefined ? `${decision.battle.closing_rate > 0 ? '+' : ''}${decision.battle.closing_rate.toFixed(1)} m/s` : '+0.3 m/s'}</strong>
+                CLOSING:{' '}
+                <strong>
+                  {closingRate != null
+                    ? `${closingRate > 0 ? '+' : ''}${closingRate.toFixed(2)} m/s`
+                    : '—'}
+                </strong>
               </span>
             </div>
           </div>

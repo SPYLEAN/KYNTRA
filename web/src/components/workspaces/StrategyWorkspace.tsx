@@ -3,6 +3,7 @@ import type { DecisionSnapshot, EvidenceInspectionTarget } from '../../types';
 import { HeroStrategyMatrix } from '../race/HeroStrategyMatrix';
 import { RobustnessPanel } from '../race/RobustnessPanel';
 import { KyntraCallPanel } from '../race/KyntraCallPanel';
+import { WhyWhyNotPanel } from '../race/WhyWhyNotPanel';
 
 interface StrategyWorkspaceProps {
   decision: DecisionSnapshot | null;
@@ -19,6 +20,8 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
   const callLifecycle = publishedCall?.lifecycle_state || 'WITHHELD';
 
   const fairBaseline = matrix?.fair_baseline || {};
+  const whySelected = publishedCall?.why_selected || candidateCall?.why_selected || [];
+  const whyNot = publishedCall?.why_not || candidateCall?.why_not || {};
 
   return (
     <div className="workspace-strategy-container mono">
@@ -37,13 +40,19 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
 
       {/* Main Strategy Grid */}
       <div className="strategy-main-layout">
-        {/* Left Column: Call Banner + Robustness + Fair Baseline */}
+        {/* Left Column: Call Banner + Robustness + Fair Baseline + Why/Why Not */}
         <div className="strategy-side-column">
           <KyntraCallPanel
             publishedCall={publishedCall}
             callLifecycle={callLifecycle}
             candidateCall={candidateCall}
             decisionSnapshotId={decision?.decision_id}
+            onOpenEvidence={onOpenEvidence}
+          />
+
+          <WhyWhyNotPanel
+            whySelected={whySelected}
+            whyNot={whyNot}
             onOpenEvidence={onOpenEvidence}
           />
 
@@ -68,19 +77,35 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
               <tbody>
                 <tr>
                   <td className="key-col text-muted">Attacker Starting Energy</td>
-                  <td className="val-col font-bold">{fairBaseline['attacker_energy_mj'] ? `${fairBaseline['attacker_energy_mj'].toFixed(2)} MJ` : '3.20 MJ'}</td>
+                  <td className="val-col font-bold">
+                    {fairBaseline['attacker_energy_mj'] != null
+                      ? `${fairBaseline['attacker_energy_mj'].toFixed(2)} MJ`
+                      : '—'}
+                  </td>
                 </tr>
                 <tr>
                   <td className="key-col text-muted">Temporal Gap</td>
-                  <td className="val-col font-bold">{fairBaseline['gap_seconds'] ? `${fairBaseline['gap_seconds'].toFixed(2)}s` : '—'}</td>
+                  <td className="val-col font-bold">
+                    {fairBaseline['gap_seconds'] != null
+                      ? `${fairBaseline['gap_seconds'].toFixed(2)}s`
+                      : '—'}
+                  </td>
                 </tr>
                 <tr>
                   <td className="key-col text-muted">Closing Rate</td>
-                  <td className="val-col">{fairBaseline['closing_rate'] ? `${fairBaseline['closing_rate'].toFixed(1)} m/s` : '0.0 m/s'}</td>
+                  <td className="val-col">
+                    {fairBaseline['closing_rate'] != null
+                      ? `${fairBaseline['closing_rate'].toFixed(1)} m/s`
+                      : '—'}
+                  </td>
                 </tr>
                 <tr>
                   <td className="key-col text-muted">Evaluation Timestamp</td>
-                  <td className="val-col text-accent">{matrix?.evaluation_timestamp ? new Date(matrix.evaluation_timestamp).toLocaleTimeString() : 'LIVE'}</td>
+                  <td className="val-col text-accent">
+                    {matrix?.evaluation_timestamp
+                      ? new Date(matrix.evaluation_timestamp).toLocaleTimeString()
+                      : '—'}
+                  </td>
                 </tr>
               </tbody>
             </table>
