@@ -8468,5 +8468,630 @@ html, body, #root {
   background: rgba(6, 182, 212, 0.08);
 }
 
+/* ==========================================================================
+   ENERGY HORIZON PANEL & STEPPED TRAJECTORY
+   ========================================================================== */
+.energy-horizon-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.energy-horizon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 5px;
+}
+
+.energy-horizon-header .title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.horizon-title {
+  font-size: 11px;
+  color: #f8fafc;
+  letter-spacing: 0.5px;
+}
+
+.horizon-sub {
+  font-size: 9px;
+  color: #64748b;
+}
+
+.energy-horizon-header .badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.disclaimer-pill {
+  font-size: 8px;
+  padding: 1px 4px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 2px;
+  letter-spacing: 0.2px;
+}
+
+/* 4-Action Energy Selector Strip */
+.action-energy-toggle-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.action-energy-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 3px 2px;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.action-energy-tab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+}
+
+.action-energy-tab.active {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.35);
+  color: #06b6d4;
+}
+
+.tab-winner-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+/* Stepped Trajectory Card */
+.energy-stepped-trajectory-card {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease;
+}
+
+.energy-stepped-trajectory-card:hover {
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.trajectory-metrics-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metric-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.step-lbl {
+  font-size: 8px;
+  letter-spacing: 0.3px;
+}
+
+.step-val {
+  font-size: 11px;
+}
+
+.step-val .unit {
+  font-size: 8.5px;
+  color: #64748b;
+  font-weight: normal;
+}
+
+.step-tag {
+  font-size: 7.5px;
+  font-family: monospace;
+  font-weight: 700;
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+.tag-sim {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+}
+
+.tag-mgu {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.tag-regen {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.tag-res {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+.step-connector {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.5;
+}
+
+/* Horizontal Visual Gauge */
+.energy-visual-gauge-bar {
+  height: 4px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+}
+
+.gauge-segment {
+  height: 100%;
+}
+
+.segment-reserve {
+  background: #06b6d4;
+}
+
+.segment-deployed {
+  background: #ef4444;
+}
+
+.segment-recovered {
+  background: #10b981;
+}
+
+.trajectory-footer-strip {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.5px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.footer-item {
+  display: flex;
+  gap: 3px;
+}
+
+/* Rule & Stability Sub-Intelligence Grid */
+.energy-sub-intelligence-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.sub-card {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.sub-card:hover {
+  border-color: rgba(6, 182, 212, 0.35);
+  background: rgba(30, 41, 59, 0.4);
+}
+
+.sub-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sub-title {
+  font-size: 9px;
+  color: #cbd5e1;
+}
+
+.status-badge {
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.badge-allowed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-blocked {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-unknown {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.badge-high_risk {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-caution {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.sub-card-body {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 8.5px;
+}
+
+.consensus-chips-wrap {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.consensus-chip {
+  font-size: 7.5px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+}
+
+.consensus-chip.triggered {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.consensus-chip.available {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.energy-panel-footer {
+  text-align: center;
+  padding-top: 2px;
+}
+
+.footer-disclaimer {
+  font-size: 7.5px;
+  color: #475569;
+  letter-spacing: 0.3px;
+}
+
+/* ==========================================================================
+   DECISION DEPENDENCY GRAPH
+   ========================================================================== */
+.decision-dependency-graph-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 4px;
+}
+
+.graph-title {
+  font-size: 10.5px;
+  color: #f8fafc;
+  letter-spacing: 0.5px;
+}
+
+.graph-sub {
+  font-size: 8.5px;
+  color: #64748b;
+  margin-left: 6px;
+}
+
+.graph-tag {
+  font-size: 8.5px;
+}
+
+.graph-nodes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.graph-connector-stem {
+  display: flex;
+  justify-content: center;
+  height: 8px;
+}
+
+.stem-line {
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.graph-node {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.graph-node:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.node-root {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.node-root.node-withheld {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.node-eyebrow {
+  font-size: 8px;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.node-title {
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.node-meta {
+  font-size: 9px;
+}
+
+/* Pillars Grid (3 Parallel Pre-requisites) */
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.node-pillar {
+  padding: 5px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.node-pillar .node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 8.5px;
+}
+
+.pillar-name {
+  color: #cbd5e1;
+}
+
+.node-pillar .node-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pillar-val {
+  font-size: 10px;
+}
+
+.pillar-hint {
+  font-size: 7.5px;
+}
+
+.node-pillar .node-footer {
+  font-size: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding-top: 2px;
+  color: #94a3b8;
+}
+
+.node-pillar.passed {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.node-pillar.failed {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.node-pillar.pending {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Tier 4 Future Opportunity Node */
+.node-window {
+  padding: 4px 8px;
+}
+
+.window-node-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+}
+
+/* Tiers 5-6 Ranking Resolution Node */
+.node-ranking {
+  padding: 5px 8px;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.ranking-node-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 9px;
+}
+
+.r-winner {
+  font-size: 11px;
+}
+
+.r-sub {
+  font-size: 8px;
+}
+
+/* ==========================================================================
+   ENHANCED UNIVERSAL EVIDENCE DRAWER
+   ========================================================================== */
+.evidence-status-pill {
+  font-size: 8.5px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+}
+
+.drawer-stability-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.stability-icon {
+  font-size: 14px;
+}
+
+.stability-text {
+  font-size: 10px;
+  color: #d8b4fe;
+  letter-spacing: 0.3px;
+}
+
+.stability-sub {
+  font-size: 9px;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.drawer-rule-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.rule-icon {
+  font-size: 14px;
+}
+
+.rule-text {
+  font-size: 10px;
+  color: #93c5fd;
+  letter-spacing: 0.3px;
+}
+
+.rule-sub {
+  font-size: 9px;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.raw-toggle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.raw-toggle-btn {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  color: #cbd5e1;
+  font-size: 8.5px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.raw-toggle-btn:hover {
+  background: rgba(51, 65, 85, 0.8);
+  color: #ffffff;
+}
+
+.raw-payload-block {
+  background: #020617;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 8px;
+  color: #94a3b8;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.meta-click-hint {
+  font-size: 8.5px;
+  padding: 1px 4px;
+  background: rgba(6, 182, 212, 0.12);
+  border-radius: 2px;
+}
+
+
 
 

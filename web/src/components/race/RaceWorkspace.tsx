@@ -14,6 +14,7 @@ import { DigitalTrackTwin } from '../DigitalTrackTwin';
 import { KyntraCallPanel } from './KyntraCallPanel';
 import { WhyWhyNotPanel } from './WhyWhyNotPanel';
 import { PassWindowStrip } from './PassWindowStrip';
+import { EnergyHorizonPanel } from './EnergyHorizonPanel';
 import { ProvenanceChip } from '../common/ProvenanceChip';
 
 interface RaceWorkspaceProps {
@@ -393,119 +394,17 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
           />
         </div>
 
-        {/* Sector 3: 03. ENERGY CONSEQUENCE (Simulated Energy + Inline Rule & Stability Consequence) */}
+        {/* Sector 3: 03. ENERGY HORIZON & REGULATORY/STABILITY INTELLIGENCE */}
         <div className="right-panel-energy">
-          <div className="panel-header-strip">
-            <span className="panel-title font-bold">03. ENERGY CONSEQUENCE</span>
-            <ProvenanceChip type="SIMULATED ENERGY" />
-          </div>
-          <div
-            className="energy-technical-card clickable"
-            onClick={() =>
-              onOpenEvidence({
-                title: 'Simulated 2026 Energy State & Usable SoC Window',
-                value: availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : '—',
-                status: 'SIMULATED',
-                provenance: 'SIMULATED ENERGY',
-                method: 'FIA 2026 Technical Regulations Straightline Power Taper Model (290-345 km/h)',
-                version: 'FIA_TR_ISSUE_20_2026',
-                evidenceItems: [
-                  { label: 'Energy State', value: 'SIMULATED — REGULATION CONSTRAINED' },
-                  { label: 'Usable SoC Window', value: availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : 'UNAVAILABLE' },
-                  { label: 'Lap Deployment Cap', value: '4.00 MJ (Regulation Cap)' },
-                  { label: 'MGU-K Power Limit', value: '350 kW' },
-                  { label: 'Rule Eligibility', value: ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus || 'UNKNOWN' },
-                  { label: 'Stability V1', value: stabilityVerdict },
-                ],
-              })
-            }
-            title="Click to inspect simulated energy state & regulation evidence"
-          >
-            <div className="energy-stat-row">
-              <div className="stat-col">
-                <span className="stat-lbl text-muted">USABLE SOC WINDOW</span>
-                <div className="stat-num-line">
-                  <span className="stat-num mono-num font-bold text-primary">
-                    {availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : '—'}
-                  </span>
-                  <span className="stat-sub text-muted mono-num">/ 4.00 MJ REGULATION WINDOW</span>
-                </div>
-              </div>
-              <div className="stat-col text-right">
-                <span className="stat-lbl text-muted">MGU-K LIMIT</span>
-                <span className="stat-num mono-num font-bold text-secondary">350 kW</span>
-                <span className="stat-sub text-muted">2026 TR</span>
-              </div>
-            </div>
-
-            {/* Inline Regulatory & Stability Summary */}
-            <div className="dual-status-grid energy-inline-rules" style={{ marginTop: '8px', marginBottom: '8px' }}>
-              <div
-                className="status-summary-item"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenEvidence({
-                    title: 'FIA Sporting & Technical Regulations Compliance',
-                    value: ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus || 'UNKNOWN',
-                    status: ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL' ? 'VALID' : ruleStatus === 'UNKNOWN' ? 'UNKNOWN' : 'BLOCKED',
-                    provenance: 'RULE CHECK',
-                    method: 'Deterministic FIA 2026 Code C5.2.7 Check',
-                  });
-                }}
-                title="Click to inspect regulatory evidence"
-              >
-                <span className="item-label text-muted">RULE ELIGIBILITY</span>
-                <span
-                  className={`item-status-val font-bold ${
-                    ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL'
-                      ? 'text-valid'
-                      : ruleStatus === 'UNKNOWN'
-                      ? 'text-neutral'
-                      : 'text-blocked'
-                  }`}
-                >
-                  {ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus || 'UNKNOWN'}
-                </span>
-              </div>
-
-              <div
-                className="status-summary-item"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenEvidence({
-                    title: 'Stability V1 Post-Pass Degradation Verdict',
-                    value: stabilityVerdict,
-                    status: stabilityVerdict === 'FAVORABLE' ? 'VALID' : stabilityVerdict === 'UNKNOWN' ? 'UNKNOWN' : 'CAUTION',
-                    provenance: 'ORDINAL STABILITY',
-                    method: 'Rank Conservation Metric',
-                  });
-                }}
-                title="Click to inspect stability evidence"
-              >
-                <span className="item-label text-muted">STABILITY V1</span>
-                <span
-                  className={`item-status-val font-bold ${
-                    stabilityVerdict === 'FAVORABLE'
-                      ? 'text-valid'
-                      : stabilityVerdict === 'UNKNOWN'
-                      ? 'text-neutral'
-                      : 'text-caution'
-                  }`}
-                >
-                  {stabilityVerdict}
-                </span>
-              </div>
-            </div>
-
-            <div className="energy-context-footer">
-              <span className="ctx-scenario text-secondary">
-                SCENARIO: <strong className="text-primary">Nominal 2026 TR</strong>
-              </span>
-              <span className="ctx-disclaimer text-muted">
-                SIMULATED — REGULATION CONSTRAINED
-              </span>
-            </div>
-          </div>
+          <EnergyHorizonPanel
+            availEnergyMj={availEnergyMj}
+            actions={runtimeSnapshot?.current_matrix?.actions}
+            activeActionKey={(publishedCall?.backend_action ?? 'OVERTAKE') as 'CONSERVE' | 'BUILD' | 'DEPLOY' | 'OVERTAKE'}
+            ruleStatus={ruleStatus === 'LEGAL' ? 'ALLOWED' : (ruleStatus as 'ALLOWED' | 'BLOCKED' | 'UNKNOWN') || 'UNKNOWN'}
+            stabilityVerdict={stabilityVerdict === 'FAVORABLE' ? 'UNKNOWN' : (stabilityVerdict as 'HIGH_RISK' | 'CAUTION' | 'UNKNOWN') || 'UNKNOWN'}
+            raceControlStatus={runtimeSnapshot?.race_control?.status ?? 'GREEN'}
+            onOpenEvidence={onOpenEvidence}
+          />
         </div>
 
         {/* Sector 5: KYNTRA Call Hero Banner */}

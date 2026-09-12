@@ -4,6 +4,7 @@ import { HeroStrategyMatrix } from '../race/HeroStrategyMatrix';
 import { RobustnessPanel } from '../race/RobustnessPanel';
 import { KyntraCallPanel } from '../race/KyntraCallPanel';
 import { WhyWhyNotPanel } from '../race/WhyWhyNotPanel';
+import { DecisionDependencyGraph } from '../race/DecisionDependencyGraph';
 
 interface StrategyWorkspaceProps {
   decision: DecisionSnapshot | null;
@@ -23,6 +24,16 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
   const whySelected = publishedCall?.why_selected || candidateCall?.why_selected || [];
   const whyNot = publishedCall?.why_not || candidateCall?.why_not || {};
 
+  const ruleStatus = decision?.compliance?.status === 'LEGAL'
+    ? 'ALLOWED'
+    : (decision?.compliance?.status as 'ALLOWED' | 'BLOCKED' | 'UNKNOWN') || 'UNKNOWN';
+
+  const stabilityVerdict = decision?.stability?.verdict === 'FAVORABLE'
+    ? 'UNKNOWN'
+    : (decision?.stability?.verdict as 'HIGH_RISK' | 'CAUTION' | 'UNKNOWN') || 'UNKNOWN';
+
+  const availEnergyMj = decision?.energy?.available_energy_mj ?? fairBaseline['attacker_energy_mj'] ?? 3.20;
+
   return (
     <div className="workspace-strategy-container mono">
       {/* Top Strategic Overview Bar */}
@@ -40,7 +51,7 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
 
       {/* Main Strategy Grid */}
       <div className="strategy-main-layout">
-        {/* Left Column: Call Banner + Robustness + Fair Baseline + Why/Why Not */}
+        {/* Left Column: Call Banner + Dependency Graph + Robustness + Fair Baseline + Why/Why Not */}
         <div className="strategy-side-column">
           <KyntraCallPanel
             publishedCall={publishedCall}
@@ -50,9 +61,20 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
             onOpenEvidence={onOpenEvidence}
           />
 
+          <DecisionDependencyGraph
+            publishedCall={publishedCall}
+            matrix={matrix}
+            ruleStatus={ruleStatus}
+            stabilityVerdict={stabilityVerdict}
+            availEnergyMj={availEnergyMj}
+            decisionSnapshotId={decision?.decision_id}
+            onOpenEvidence={onOpenEvidence}
+          />
+
           <WhyWhyNotPanel
             whySelected={whySelected}
             whyNot={whyNot}
+            ruleStatus={ruleStatus}
             onOpenEvidence={onOpenEvidence}
           />
 

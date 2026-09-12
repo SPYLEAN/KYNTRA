@@ -438,11 +438,15 @@ export interface StrategyMatrixActionData {
     provenance: string;
   };
   post_pass_stability: {
-    verdict: 'FAVORABLE' | 'CAUTION' | 'HIGH_RISK' | 'UNKNOWN';
+    verdict: 'HIGH_RISK' | 'CAUTION' | 'UNKNOWN';
     available: boolean;
     reason: string;
     manifest_version: string;
     provenance: string;
+    available_families?: string[];
+    triggered_families?: string[];
+    manifest_sha256?: string;
+    dataset_sha256?: string;
   };
   future_opportunity: {
     opportunity_label: string;
@@ -549,6 +553,8 @@ export type ProvenanceType =
   | 'RULE CHECK'
   | 'FORECAST SIMULATION'
   | 'ORDINAL STABILITY'
+  | 'STRATEGY RANKING'
+  | 'DECISION GATE'
   | 'HISTORICAL'
   | 'UNKNOWN'
   | 'CONFIG_ASSUMPTION';
@@ -558,12 +564,15 @@ export interface EvidenceInspectionTarget {
   value: string;
   status: 'VALID' | 'CAUTION' | 'BLOCKED' | 'UNKNOWN' | 'SIMULATED' | 'INFO';
   provenance: ProvenanceType;
+  source?: string;
   method?: string;
   version?: string;
   timestamp?: string;
-  evidenceItems?: { label: string; value: string; note?: string }[];
-  configIdentities?: Record<string, string>;
   reasonCodes?: string[];
+  configIdentities?: Record<string, string>;
+  technicalEvidence?: { label: string; value: string; note?: string }[];
+  evidenceItems?: { label: string; value: string; note?: string }[];
   rawObject?: Record<string, any>;
 }
+
 

@@ -79,7 +79,33 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
                 else if (isExcluded) colClass = 'col-excluded';
 
                 return (
-                  <th key={col.key} className={`action-col ${colClass}`}>
+                  <th
+                    key={col.key}
+                    className={`action-col ${colClass} cell-clickable`}
+                    onClick={() =>
+                      onOpenEvidence({
+                        title: `Tactical Action — ${col.uiTitle} (${col.key})`,
+                        value: isWinner ? 'SELECTED WINNER' : isBlocked ? 'RULE BLOCKED' : isExcluded ? 'ELIMINATED' : 'CANDIDATE',
+                        status: isWinner ? 'VALID' : isBlocked ? 'BLOCKED' : isExcluded ? 'CAUTION' : 'INFO',
+                        provenance: 'STRATEGY RANKING',
+                        source: 'KYNTRA Lexicographic 6-Tier Strategy Core',
+                        method: 'Deterministic Scenario Evaluation',
+                        version: '1.0.0',
+                        reasonCodes: actData?.ranking_result?.elimination_reason ? [actData.ranking_result.elimination_reason] : undefined,
+                        technicalEvidence: [
+                          { label: 'Action Key', value: col.key },
+                          { label: 'Operator Label', value: col.uiTitle },
+                          { label: 'Rule State', value: actData?.rule_eligibility?.status || 'UNKNOWN' },
+                          { label: 'Simulated Before Energy', value: `${actData?.energy_accounting?.before_energy_mj?.toFixed(2) || '3.20'} MJ` },
+                          { label: 'Planned Deployment', value: `${actData?.energy_accounting?.deployment_mj?.toFixed(2) || '0.00'} MJ` },
+                          { label: 'Terminal Energy Reserve', value: `${actData?.energy_accounting?.terminal_energy_mj?.toFixed(2) || '3.00'} MJ` },
+                          { label: 'Post-Pass Stability', value: actData?.post_pass_stability?.verdict || 'UNKNOWN' },
+                          { label: 'Elimination Tier', value: actData?.ranking_result?.elimination_tier || 'TIER 4 (DOMINATED)' },
+                        ],
+                      })
+                    }
+                    title={`Click to inspect ${col.uiTitle} tactical evidence`}
+                  >
                     <div className="col-header-wrap">
                       <div className="col-title font-bold">{col.uiTitle}</div>
                       <div className="col-action-raw text-muted">[{col.key}]</div>
@@ -519,9 +545,27 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
                 return (
                   <td
                     key={col.key}
-                    className={`matrix-cell cell-ranking ${
+                    className={`matrix-cell cell-ranking cell-clickable ${
                       isWinner ? 'rank-winner-cell' : isExcluded ? 'rank-excluded-cell' : ''
                     }`}
+                    onClick={() =>
+                      onOpenEvidence({
+                        title: `${col.uiTitle} — Ranking Result`,
+                        value: isWinner ? 'RANK 1 (WINNER)' : isExcluded ? 'EXCLUDED' : 'ELIMINATED',
+                        status: isWinner ? 'VALID' : isExcluded ? 'BLOCKED' : 'CAUTION',
+                        provenance: 'STRATEGY RANKING',
+                        source: 'KYNTRA 6-Tier Lexicographic Brain',
+                        method: 'Strict Tier-by-Tier Hierarchical Elimination',
+                        reasonCodes: res?.elimination_reason ? [res.elimination_reason] : undefined,
+                        technicalEvidence: [
+                          { label: 'Action Key', value: col.key },
+                          { label: 'Ranking Status', value: isWinner ? 'SELECTED AS STRATEGIC WINNER' : 'ELIMINATED' },
+                          { label: 'Elimination Tier', value: res?.elimination_tier || (isWinner ? 'NONE (ALL TIERS CLEARED)' : 'TIER 4 (WINDOW DOMINANCE)') },
+                          { label: 'Elimination Rationale', value: res?.elimination_reason || (isWinner ? 'Dominant across tested criteria' : 'Dominated by alternative actions') },
+                        ],
+                      })
+                    }
+                    title="Click to inspect ranking evaluation evidence"
                   >
                     <div className="cell-content">
                       {isWinner ? (
