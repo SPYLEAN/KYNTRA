@@ -58,6 +58,7 @@ class ActionRuleCheckSnapshot(BaseModel):
     result: str = "ALLOWED"  # ALLOWED | BLOCKED | UNKNOWN
     rule_ids: List[str] = Field(default_factory=list)
     rule_bundle_version: str = "2026_FIA_ISSUE_20"
+    provenance: str = "RULE_CHECK"
 
 
 class ScenarioEnergySnapshot(BaseModel):
@@ -67,6 +68,9 @@ class ScenarioEnergySnapshot(BaseModel):
     expected_recovery_mj: float = 0.0
     net_delta_mj: float = 0.0
     terminal_energy_mj: float = 0.0
+    status: str = "CONFIG_ASSUMPTION"
+    provenance: str = "CONFIG_ASSUMPTION"
+    assumption_details: Optional[Dict[str, Any]] = None
 
 
 class ActionEnergySnapshot(BaseModel):
@@ -77,7 +81,8 @@ class ActionEnergySnapshot(BaseModel):
     expected_recovery_mj: Optional[float] = None
     after_mj: Optional[float] = None
     provenance: str = "SIMULATED — 2026 REGULATION CONSTRAINED"
-    assumption_set: str = "FIA_2026_MGU_K_DEFAULT"
+    provenance_category: str = "SIMULATED_ENERGY"
+    assumption_set: str = "KYNTRA_V1_TACTICAL_NOMINAL"
 
 
 class ActionPassContextSnapshot(BaseModel):
@@ -91,6 +96,7 @@ class ActionPassContextSnapshot(BaseModel):
     current_p2: Optional[float] = None
     current_p3: Optional[float] = None
     action_effect_available: bool = False
+    provenance: str = "FROZEN_MODEL"
 
 
 class ActionStabilitySnapshot(BaseModel):
@@ -105,6 +111,7 @@ class ActionStabilitySnapshot(BaseModel):
     reason: Optional[str] = None
     available_families: List[str] = Field(default_factory=list)
     triggered_families: List[str] = Field(default_factory=list)
+    provenance: str = "ORDINAL_STABILITY_CONSENSUS"
 
 
 class ActionForecastSnapshot(BaseModel):
@@ -117,6 +124,8 @@ class ActionForecastSnapshot(BaseModel):
     future_window_quality: FutureWindowQuality = FutureWindowQuality.UNKNOWN
     rear_threat: Optional[str] = None
     terminal_energy_mj: Optional[float] = None
+    provenance: str = "FORECAST_SIMULATION"
+    status: str = "CONFIG_ASSUMPTION"
 
 
 class ActionOutcomeSnapshot(BaseModel):
@@ -157,6 +166,10 @@ class StrategyMatrixSnapshot(BaseModel):
     stability_manifest_version: Optional[str] = "1.1.0"
     stability_manifest_sha256: Optional[str] = None
     dataset_sha256: Optional[str] = None
+    strategy_config_version: str = "1.0.0"
+    strategy_config_sha256: Optional[str] = None
+    assumption_profile: str = "KYNTRA_V1_TACTICAL_NOMINAL"
+    energy_config_version: Optional[str] = "2026.1"
     current_state_summary: Dict[str, Any] = Field(default_factory=dict)
     pass_window: PassWindowSnapshot = Field(default_factory=PassWindowSnapshot)
     actions: Dict[str, ActionOutcomeSnapshot] = Field(default_factory=dict)

@@ -1,0 +1,183 @@
+# ==============================================================================
+# KYNTRA Strategy Counterfactual Configuration V1
+# Explicit Assumption Profile & Tactical Parameters
+# ==============================================================================
+# IMPORTANT: Values in this configuration represent KYNTRA V1 counterfactual
+# policy assumptions and sensitivity scenarios. They are NOT empirical calibrations,
+# team telemetry maps, or universal FIA control parameters.
+# ==============================================================================
+
+version: "1.0.0"
+assumption_profile: "KYNTRA_V1_TACTICAL_NOMINAL"
+description: "Versioned counterfactual assumptions for discrete strategist action rollouts"
+
+forecast_horizon_laps:
+  value: 3
+  unit: "laps"
+  status: "CONFIG_ASSUMPTION"
+  description: "Standard forward-look evaluation window for short-horizon battle counterfactuals"
+  rationale: "Aligns with P1/P2/P3 prediction horizon and immediate tactical stint phase"
+
+action_profiles:
+  CONSERVE:
+    deployment_fraction:
+      value: 0.20
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "MGU-K deployment scaling fraction for energy conservation mode"
+      rationale: "Minimal tactical deployment to preserve cell temperature and build reserve"
+    baseline_deployment_rate_mj:
+      value: 0.40
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap electrical deployment under conservation policy"
+      rationale: "Low-draw tactical mode under 2026 MGU-K limits"
+    baseline_harvest_rate_mj:
+      value: 1.25
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap regenerative recovery under conservation policy"
+      rationale: "Steady regenerative braking with moderate lift-and-coast"
+    gap_delta_rate_s_per_lap:
+      value: 0.25
+      unit: "s/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Projected gap loss per lap while conserving energy behind target"
+      rationale: "Tactical lift-and-coast gap concession to car ahead"
+    lap_time_consequence_s_per_lap:
+      value: 0.30
+      unit: "s/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Cumulative lap time penalty from backing off deployment"
+      rationale: "Conservative engine mode delta compared to optimal baseline lap"
+
+  BUILD:
+    deployment_fraction:
+      value: 0.55
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "MGU-K deployment scaling fraction for tactical SOC accumulation"
+      rationale: "Balanced pace maintaining striking distance while achieving net positive energy balance"
+    baseline_deployment_rate_mj:
+      value: 0.95
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap electrical deployment under build policy"
+      rationale: "Moderate deployment on straights while maximizing harvesting zones"
+    baseline_harvest_rate_mj:
+      value: 1.35
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap regenerative recovery under build policy"
+      rationale: "Aggressive harvesting profile designed to generate future surplus"
+    gap_delta_rate_s_per_lap:
+      value: 0.00
+      unit: "s/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Projected gap delta per lap while maintaining tactical contact"
+      rationale: "Attacker paces target at neutral delta while storing electrical reserve"
+    lap_time_consequence_s_per_lap:
+      value: 0.05
+      unit: "s/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Minor lap time variation from energy-positive pacing"
+      rationale: "Near-neutral lap time impact while pacing car ahead"
+
+  DEPLOY:
+    deployment_fraction:
+      value: 1.00
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "MGU-K deployment scaling fraction for standard tactical pressure"
+      rationale: "Full normal power-speed curve deployment per FIA Article C5.2.8(i)"
+    baseline_deployment_rate_mj:
+      value: 1.65
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap electrical deployment under full tactical pressure"
+      rationale: "Maximum standard race mode deployment without boost override"
+    baseline_harvest_rate_mj:
+      value: 1.20
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap regenerative recovery under deployment policy"
+      rationale: "Standard race recovery balance under hard braking"
+    default_pace_gain_s_per_lap:
+      value: 0.15
+      unit: "s/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Fallback closing rate per lap if empirical pace delta unavailable"
+      rationale: "Assumed tactical pace advantage when deploying full electrical power"
+    lap_time_consequence_s_per_lap:
+      value: -0.20
+      unit: "s/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Lap time gain per lap from tactical electrical deployment"
+      rationale: "Pace acceleration relative to neutral pacing"
+
+  OVERTAKE:
+    deployment_fraction:
+      value: 1.00
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "MGU-K deployment scaling fraction with overtake boost override"
+      rationale: "Overtake power-speed curve deployment per FIA Article C5.2.8(ii)"
+    baseline_deployment_rate_mj:
+      value: 2.30
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap electrical deployment committed to pass attempt"
+      rationale: "Maximum power-speed curve utilization through overtake zones"
+    baseline_harvest_rate_mj:
+      value: 1.10
+      unit: "MJ/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal per-lap regenerative recovery during overtake attempt"
+      rationale: "Reduced recovery due to late braking lines and absence of lift-and-coast"
+    lap_time_consequence_s_per_lap:
+      value: -0.35
+      unit: "s/lap"
+      status: "CONFIG_ASSUMPTION"
+      description: "Lap time gain from full overtake commitment"
+      rationale: "Maximum electrical boost and aggressive corner entries"
+
+energy_uncertainty:
+  CONSERVATIVE:
+    harvest_multiplier:
+      value: 0.80
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "Harvest scaling factor under conservative traffic / battery thermal limits (-20%)"
+      rationale: "Traffic interference and thermal throttling limit regenerative braking"
+    deployment_multiplier:
+      value: 1.10
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "Deployment scaling factor under conservative wheelspin / headwind conditions (+10%)"
+      rationale: "Sub-optimal grip or adverse conditions require higher electrical draw"
+  NOMINAL:
+    harvest_multiplier:
+      value: 1.00
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal baseline harvest rate (100%)"
+      rationale: "Expected clean-air regenerative recovery"
+    deployment_multiplier:
+      value: 1.00
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "Nominal baseline deployment rate (100%)"
+      rationale: "Expected standard electrical consumption"
+  FAVORABLE:
+    harvest_multiplier:
+      value: 1.20
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "Harvest scaling factor under favorable tow / optimal brake regen (+20%)"
+      rationale: "Extended deceleration zones and optimal battery cooling"
+    deployment_multiplier:
+      value: 0.90
+      unit: "ratio"
+      status: "CONFIG_ASSUMPTION"
+      description: "Deployment scaling factor under favorable slipstream efficiency (-10%)"
+      rationale: "Aerodynamic slipstream reduces power required to achieve target speed"

@@ -18,6 +18,7 @@ import uuid
 from kyntra.models.registry import get_overtake_model
 from kyntra.stability import evaluate_stability
 from kyntra.stability.manifest import get_default_manifest_path, load_stability_manifest
+from kyntra.strategy.config import load_strategy_counterfactual_config
 from kyntra.strategy.counterfactuals import simulate_action_outcome
 from kyntra.strategy.models import (
     ActionOutcomeSnapshot,
@@ -121,7 +122,10 @@ def generate_strategy_matrix(
     if simulated_energy_state and "available_energy_mj" in simulated_energy_state:
         avail_energy_mj = float(simulated_energy_state["available_energy_mj"])
 
-    # 5. Fair Baseline Action Evaluation
+    # 5. Load strategy counterfactual configuration
+    strat_cfg = load_strategy_counterfactual_config()
+
+    # 6. Fair Baseline Action Evaluation
     actions_to_evaluate = action_order or [
         StrategistAction.CONSERVE,
         StrategistAction.BUILD,
@@ -140,6 +144,7 @@ def generate_strategy_matrix(
             pass_window=pass_window,
             stability_result=stability_res,
             horizon_laps=horizon_laps,
+            strategy_config=strat_cfg,
         )
         actions_dict[act.value] = outcome
 
@@ -174,6 +179,10 @@ def generate_strategy_matrix(
         stability_manifest_version=manifest_ver,
         stability_manifest_sha256=manifest_sha,
         dataset_sha256=dataset_sha,
+        strategy_config_version=strat_cfg.version,
+        strategy_config_sha256=strat_cfg.sha256,
+        assumption_profile=strat_cfg.assumption_profile,
+        energy_config_version="2026.1",
         current_state_summary=state_summary,
         pass_window=pass_window,
         actions=actions_dict,

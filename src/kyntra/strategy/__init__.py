@@ -1,5 +1,11 @@
 """KYNTRA Strategist Matrix and counterfactual scenario modeling package."""
 
+from kyntra.strategy.config import (
+    ActionProfileConfig,
+    ScenarioMultiplierConfig,
+    StrategyCounterfactualConfig,
+    load_strategy_counterfactual_config,
+)
 from kyntra.strategy.counterfactuals import (
     evaluate_action_rule_check,
     evaluate_action_stability,

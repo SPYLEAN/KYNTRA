@@ -11,14 +11,21 @@ STRICT INVARIANTS:
 2. ML TRUTH: Does NOT fabricate action-conditioned P1/P2/P3 probabilities.
 3. PROVENANCE: Energy is SIMULATED, never labeled as measured SOC.
 4. STABILITY: Reuses Stability V1 consensus verdicts without emitting FAVORABLE.
+5. ZERO ANONYMOUS CONSTANTS: All policy fractions and scenario multipliers load from versioned config.
+6. REGULATION CONTEXT: Yellow flag checks require zone applicability; unknown context yields UNKNOWN.
+7. DIRECTIONAL FUTURE WINDOW: FutureWindowQuality relies on empirical pace/energy/stability dominance, not arbitrary MJ thresholds.
 """
 
 import copy
+import logging
 import math
 from typing import Any, Dict, List, Optional, Tuple
 
-from kyntra.schemas import ComplianceSnapshot
 from kyntra.stability.models import StabilityResult, StabilityVerdict
+from kyntra.strategy.config import (
+    StrategyCounterfactualConfig,
+    load_strategy_counterfactual_config,
+)
 from kyntra.strategy.models import (
     ActionEnergySnapshot,
     ActionForecastSnapshot,
@@ -32,33 +39,43 @@ from kyntra.strategy.models import (
     StrategistAction,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def evaluate_action_rule_check(
     action: StrategistAction,
     track_status: Optional[str],
     event_id: Optional[str] = None,
+    battle_sector: Optional[int] = None,
+    yellow_flag_sectors: Optional[List[int]] = None,
+    yellow_zone_active: Optional[bool] = None,
 ) -> ActionRuleCheckSnapshot:
     """Evaluate deterministic sporting and technical legality per action.
-    
+
     CRITICAL DISTINCTION:
-    Under SC/VSC/Yellow/Red conditions, OVERTAKE is strictly BLOCKED by FIA Sporting Regulations.
-    However, electrical DEPLOY, CONSERVE, and BUILD are NOT prohibited merely because overtaking is blocked.
+    - Under SC/VSC/Red conditions, OVERTAKE is strictly BLOCKED by FIA Sporting Regulations.
+    - Under Yellow flags (Article ISC App H B1.8.4), overtaking is prohibited only in the
+      specific hazard zone. If zone applicability is unknown, rule result is UNKNOWN.
+    - DEPLOY, CONSERVE, and BUILD remain ALLOWED under neutralized conditions as electrical
+      management is not prohibited merely because overtaking is restricted.
     """
     ts = str(track_status or "1").strip()
     rule_bundle = "2026_FIA_ISSUE_20"
 
-    # 1. Neutralized race conditions (VSC, SC, Red, Yellow)
+    # 1. Neutralized race conditions (VSC, SC, Red)
     if ts in ["6", "7", "VSC"]:
         if action == StrategistAction.OVERTAKE:
             return ActionRuleCheckSnapshot(
                 result="BLOCKED",
                 rule_ids=["FIA_SR_B5.12.2(c)"],
                 rule_bundle_version=rule_bundle,
+                provenance="RULE_CHECK",
             )
         return ActionRuleCheckSnapshot(
             result="ALLOWED",
             rule_ids=["FIA_SR_B5.12.2_DEPLOY_PERMITTED"],
             rule_bundle_version=rule_bundle,
+            provenance="RULE_CHECK",
         )
 
     if ts in ["4", "SC"]:
@@ -67,11 +84,13 @@ def evaluate_action_rule_check(
                 result="BLOCKED",
                 rule_ids=["FIA_SR_B5.13.2(c)"],
                 rule_bundle_version=rule_bundle,
+                provenance="RULE_CHECK",
             )
         return ActionRuleCheckSnapshot(
             result="ALLOWED",
             rule_ids=["FIA_SR_B5.13.2_DEPLOY_PERMITTED"],
             rule_bundle_version=rule_bundle,
+            provenance="RULE_CHECK",
         )
 
     if ts in ["5", "RED"]:
@@ -80,39 +99,72 @@ def evaluate_action_rule_check(
                 result="BLOCKED",
                 rule_ids=["FIA_SR_B5.14.2(a)"],
                 rule_bundle_version=rule_bundle,
+                provenance="RULE_CHECK",
             )
         return ActionRuleCheckSnapshot(
             result="ALLOWED",
             rule_ids=["FIA_SR_B5.14.2_DEPLOY_PERMITTED"],
             rule_bundle_version=rule_bundle,
+            provenance="RULE_CHECK",
         )
 
+    # 2. Yellow flag running (ISC Appendix H Article 1.8.4)
     if ts in ["2", "YELLOW"]:
-        if action == StrategistAction.OVERTAKE:
+        if action in [StrategistAction.CONSERVE, StrategistAction.BUILD, StrategistAction.DEPLOY]:
+            return ActionRuleCheckSnapshot(
+                result="ALLOWED",
+                rule_ids=["FIA_ISC_APP_H_DEPLOY_PERMITTED"],
+                rule_bundle_version=rule_bundle,
+                provenance="RULE_CHECK",
+            )
+
+        # For OVERTAKE: Check if battle is within applicable hazard zone
+        if yellow_zone_active is True or (
+            battle_sector is not None
+            and yellow_flag_sectors is not None
+            and battle_sector in yellow_flag_sectors
+        ):
             return ActionRuleCheckSnapshot(
                 result="BLOCKED",
                 rule_ids=["FIA_ISC_APP_H_B1.8.4"],
                 rule_bundle_version=rule_bundle,
+                provenance="RULE_CHECK",
             )
-        return ActionRuleCheckSnapshot(
-            result="ALLOWED",
-            rule_ids=["FIA_ISC_APP_H_DEPLOY_PERMITTED"],
-            rule_bundle_version=rule_bundle,
-        )
+        elif yellow_zone_active is False or (
+            battle_sector is not None
+            and yellow_flag_sectors is not None
+            and battle_sector not in yellow_flag_sectors
+        ):
+            return ActionRuleCheckSnapshot(
+                result="ALLOWED",
+                rule_ids=["FIA_ISC_APP_H_B1.8.4_OUTSIDE_HAZARD_ZONE"],
+                rule_bundle_version=rule_bundle,
+                provenance="RULE_CHECK",
+            )
+        else:
+            # Applicability cannot be determined; do not turn uncertainty into BLOCKED or ALLOWED
+            return ActionRuleCheckSnapshot(
+                result="UNKNOWN",
+                rule_ids=["FIA_ISC_APP_H_YELLOW_ZONE_UNSPECIFIED_OVERTAKE_UNKNOWN"],
+                rule_bundle_version=rule_bundle,
+                provenance="RULE_CHECK",
+            )
 
-    # 2. Check if event configuration exists or is unconfigured
+    # 3. Check if event configuration exists or is unconfigured
     if not event_id:
         return ActionRuleCheckSnapshot(
             result="UNKNOWN",
             rule_ids=["EVENT_UNCONFIGURED_COMPLIANCE_UNKNOWN"],
             rule_bundle_version=rule_bundle,
+            provenance="RULE_CHECK",
         )
 
-    # 3. Green flag running
+    # 4. Green flag running
     return ActionRuleCheckSnapshot(
         result="ALLOWED",
         rule_ids=["FIA_2026_GREEN_FLAG_COMPLIANT"],
         rule_bundle_version=rule_bundle,
+        provenance="RULE_CHECK",
     )
 
 
@@ -120,12 +172,16 @@ def simulate_action_energy_scenarios(
     action: StrategistAction,
     available_energy_mj: Optional[float],
     horizon_laps: int = 3,
+    strategy_config: Optional[StrategyCounterfactualConfig] = None,
 ) -> Tuple[ActionEnergySnapshot, Dict[str, ScenarioEnergySnapshot]]:
-    """Simulate 2026 regulation-constrained energy accounting across 3 assumption sets.
-    
-    Generates CONSERVATIVE, NOMINAL, and FAVORABLE scenarios.
-    Never fabricates measured SOC; tagged SIMULATED — 2026 REGULATION CONSTRAINED.
+    """Simulate 2026 regulation-constrained energy accounting across 3 sensitivity scenarios.
+
+    Generates CONSERVATIVE, NOMINAL, and FAVORABLE scenarios using explicit assumption multipliers.
+    Never fabricates measured SOC; tagged SIMULATED_ENERGY with CONFIG_ASSUMPTION status.
     """
+    cfg = strategy_config or load_strategy_counterfactual_config()
+    profile_name = cfg.assumption_profile
+
     if available_energy_mj is None:
         empty_energy = ActionEnergySnapshot(
             available=False,
@@ -134,50 +190,24 @@ def simulate_action_energy_scenarios(
             expected_recovery_mj=None,
             after_mj=None,
             provenance="SIMULATED — 2026 REGULATION CONSTRAINED",
+            provenance_category="SIMULATED_ENERGY",
             assumption_set="UNAVAILABLE",
         )
         return empty_energy, {}
 
     e_initial = max(0.0, min(4.0, float(available_energy_mj)))
+    act_prof = cfg.action_profiles.get(action.value)
+    if not act_prof:
+        raise ValueError(f"Action {action.value} missing from strategy counterfactual profile {profile_name}")
 
-    # Per-lap baseline deployment & recovery rates under 2026 MGU-K ceilings (Article C5.2.7 & C5.2.9)
-    # Scaled by action policy fractions:
-    # CONSERVE: low deploy (0.20), steady harvest
-    # BUILD: moderate deploy (0.55), high harvest focus
-    # DEPLOY: full normal curve (1.00), standard harvest
-    # OVERTAKE: override boost (1.00 override), reduced regenerative coasting
-    base_deploy_rates = {
-        StrategistAction.CONSERVE: 0.40,
-        StrategistAction.BUILD: 0.95,
-        StrategistAction.DEPLOY: 1.65,
-        StrategistAction.OVERTAKE: 2.30,
-    }
-    base_harvest_rates = {
-        StrategistAction.CONSERVE: 1.25,
-        StrategistAction.BUILD: 1.35,
-        StrategistAction.DEPLOY: 1.20,
-        StrategistAction.OVERTAKE: 1.10,
-    }
-
-    dep_base = base_deploy_rates[action]
-    harv_base = base_harvest_rates[action]
-
-    # Three assumption cases:
-    # CONSERVATIVE: harvest -20%, deploy +10%
-    # NOMINAL: baseline
-    # FAVORABLE: harvest +20%, deploy -10%
-    scenario_configs = {
-        "CONSERVATIVE": {"dep_mult": 1.10, "harv_mult": 0.80},
-        "NOMINAL": {"dep_mult": 1.00, "harv_mult": 1.00},
-        "FAVORABLE": {"dep_mult": 0.90, "harv_mult": 1.20},
-    }
+    dep_base = act_prof.baseline_deployment_rate_mj
+    harv_base = act_prof.baseline_harvest_rate_mj
 
     scenarios: Dict[str, ScenarioEnergySnapshot] = {}
 
-    for name, cfg in scenario_configs.items():
-        total_dep = round(dep_base * cfg["dep_mult"] * horizon_laps, 2)
-        total_harv = round(harv_base * cfg["harv_mult"] * horizon_laps, 2)
-        # Cap deployment by available energy + recovery
+    for name, mult_cfg in cfg.energy_uncertainty.items():
+        total_dep = round(dep_base * mult_cfg.deployment_multiplier * horizon_laps, 2)
+        total_harv = round(harv_base * mult_cfg.harvest_multiplier * horizon_laps, 2)
         actual_dep = min(total_dep, e_initial + total_harv)
         net_delta = round(total_harv - actual_dep, 2)
         terminal_e = round(max(0.0, min(4.0, e_initial + net_delta)), 2)
@@ -188,6 +218,15 @@ def simulate_action_energy_scenarios(
             expected_recovery_mj=total_harv,
             net_delta_mj=net_delta,
             terminal_energy_mj=terminal_e,
+            status="CONFIG_ASSUMPTION",
+            provenance="CONFIG_ASSUMPTION",
+            assumption_details={
+                "harvest_multiplier": mult_cfg.harvest_multiplier,
+                "deployment_multiplier": mult_cfg.deployment_multiplier,
+                "assumption_profile": profile_name,
+                "action_baseline_deployment_mj": dep_base,
+                "action_baseline_harvest_mj": harv_base,
+            },
         )
 
     # 1-lap planned step for immediate ActionEnergySnapshot
@@ -202,7 +241,8 @@ def simulate_action_energy_scenarios(
         expected_recovery_mj=step_harv,
         after_mj=step_after,
         provenance="SIMULATED — 2026 REGULATION CONSTRAINED",
-        assumption_set="FIA_2026_MGU_K_DEFAULT",
+        provenance_category="SIMULATED_ENERGY",
+        assumption_set=profile_name,
     )
 
     return action_energy, scenarios
@@ -213,7 +253,7 @@ def evaluate_action_stability(
     stability_result: Optional[StabilityResult],
 ) -> ActionStabilitySnapshot:
     """Map post-pass durability context to candidate action.
-    
+
     CONSERVE and BUILD do not gain track position, so post-pass durability is NOT_APPLICABLE.
     OVERTAKE commits to a pass attempt, requiring full durability evaluation.
     DEPLOY applies pressure without assuming a completed pass.
@@ -226,6 +266,7 @@ def evaluate_action_stability(
                 reason="ACTION_DOES_NOT_GAIN_POSITION",
                 available_families=[],
                 triggered_families=[],
+                provenance="ORDINAL_STABILITY_CONSENSUS",
             )
         return ActionStabilitySnapshot(
             verdict="UNKNOWN",
@@ -233,6 +274,7 @@ def evaluate_action_stability(
             reason="STABILITY_EVIDENCE_UNAVAILABLE",
             available_families=[],
             triggered_families=[],
+            provenance="ORDINAL_STABILITY_CONSENSUS",
         )
 
     v_str = (
@@ -248,6 +290,7 @@ def evaluate_action_stability(
             reason="ACTION_DOES_NOT_GAIN_POSITION",
             available_families=stability_result.available_families,
             triggered_families=stability_result.triggered_families,
+            provenance="ORDINAL_STABILITY_CONSENSUS",
         )
     elif action == StrategistAction.DEPLOY:
         return ActionStabilitySnapshot(
@@ -256,6 +299,7 @@ def evaluate_action_stability(
             reason="DEPLOY_DOES_NOT_ASSUME_COMPLETED_PASS",
             available_families=stability_result.available_families,
             triggered_families=stability_result.triggered_families,
+            provenance="ORDINAL_STABILITY_CONSENSUS",
         )
     else:  # OVERTAKE
         return ActionStabilitySnapshot(
@@ -264,6 +308,7 @@ def evaluate_action_stability(
             reason=stability_result.reason or "OVERTAKE_DURABILITY_EVALUATION",
             available_families=stability_result.available_families,
             triggered_families=stability_result.triggered_families,
+            provenance="ORDINAL_STABILITY_CONSENSUS",
         )
 
 
@@ -272,14 +317,20 @@ def simulate_action_forecast(
     battle_data: Dict[str, Any],
     rule_check: ActionRuleCheckSnapshot,
     nominal_terminal_energy_mj: Optional[float],
+    nominal_net_energy_mj: Optional[float],
     stability_snapshot: ActionStabilitySnapshot,
     pass_window: PassWindowSnapshot,
     horizon_laps: int = 3,
+    strategy_config: Optional[StrategyCounterfactualConfig] = None,
 ) -> ActionForecastSnapshot:
     """Project deterministic short-horizon rollout outcomes over 3 laps.
-    
-    Projects gap trend, future window quality, and lap time consequences.
+
+    Uses directional and dominance logic rather than arbitrary absolute energy thresholds.
+    Tags all forecasts as FORECAST_SIMULATION / CONFIG_ASSUMPTION.
     """
+    cfg = strategy_config or load_strategy_counterfactual_config()
+    act_prof = cfg.action_profiles[action.value]
+
     gap_s = battle_data.get("gap_seconds")
     pace_delta_1 = battle_data.get("recent_pace_delta_1lap")
     rear_threat = battle_data.get("rear_threat", "LOW")
@@ -294,60 +345,94 @@ def simulate_action_forecast(
             future_window_quality=FutureWindowQuality.UNKNOWN,
             rear_threat=rear_threat,
             terminal_energy_mj=nominal_terminal_energy_mj,
+            provenance="FORECAST_SIMULATION",
+            status="CONFIG_ASSUMPTION",
         )
 
-    # Base physics assumptions per action policy:
+    # Base physics and directional consequence calculations per action policy:
     if action == StrategistAction.CONSERVE:
-        # Attacker backs off by ~0.25s per lap to harvest energy
-        gap_delta = round(0.25 * horizon_laps, 2)
-        time_consequence = round(+0.30 * horizon_laps, 2)
+        gap_delta = round(act_prof.gap_delta_rate_s_per_lap * horizon_laps, 2)
+        time_consequence = round(act_prof.lap_time_consequence_s_per_lap * horizon_laps, 2)
         pos_delta = 0
-        quality = FutureWindowQuality.MODERATE
-        # Backing off slightly increases vulnerability to car behind if threat was already HIGH
         forecast_rear = "HIGH" if rear_threat == "HIGH" else "MODERATE"
 
+        # Directional future window quality:
+        # High rear threat while backing off increases vulnerability to car behind
+        if rear_threat == "HIGH":
+            quality = FutureWindowQuality.WEAK
+        elif nominal_net_energy_mj is not None and nominal_net_energy_mj > 0:
+            quality = FutureWindowQuality.MODERATE
+        elif nominal_terminal_energy_mj is None:
+            quality = FutureWindowQuality.UNKNOWN
+        else:
+            quality = FutureWindowQuality.MODERATE
+
     elif action == StrategistAction.BUILD:
-        # Attacker maintains contact without overspending (~0.0s gap delta, harvests energy)
-        gap_delta = 0.0
-        time_consequence = round(+0.05 * horizon_laps, 2)
+        gap_delta = round(act_prof.gap_delta_rate_s_per_lap * horizon_laps, 2)
+        time_consequence = round(act_prof.lap_time_consequence_s_per_lap * horizon_laps, 2)
         pos_delta = 0
-        # BUILD creates a potent future attack window once battery is charged
-        quality = (
-            FutureWindowQuality.STRONG
-            if (nominal_terminal_energy_mj is not None and nominal_terminal_energy_mj >= 2.5)
-            else FutureWindowQuality.MODERATE
-        )
         forecast_rear = rear_threat
 
+        # Directional future window quality:
+        # Relies on demonstrated net energy surplus generation AND maintaining striking contact
+        if nominal_net_energy_mj is None or nominal_terminal_energy_mj is None:
+            quality = FutureWindowQuality.UNKNOWN
+        elif nominal_net_energy_mj > 0 and (gap_s <= 1.2 or (pace_delta_1 is not None and pace_delta_1 <= 0.05)):
+            # Net surplus achieved while staying within striking distance without pace collapse
+            quality = FutureWindowQuality.STRONG
+        elif nominal_net_energy_mj > 0:
+            quality = FutureWindowQuality.MODERATE
+        else:
+            quality = FutureWindowQuality.WEAK
+
     elif action == StrategistAction.DEPLOY:
-        # Tactical deployment closes gap based on pace delta
-        pace_gain = abs(pace_delta_1) if (pace_delta_1 is not None and pace_delta_1 < 0) else 0.15
+        pace_gain = (
+            abs(pace_delta_1)
+            if (pace_delta_1 is not None and pace_delta_1 < 0)
+            else act_prof.default_pace_gain_s_per_lap
+        )
         gap_delta = round(-pace_gain * horizon_laps, 2)
-        time_consequence = round(-0.20 * horizon_laps, 2)
+        time_consequence = round(act_prof.lap_time_consequence_s_per_lap * horizon_laps, 2)
         pos_delta = 0
-        quality = FutureWindowQuality.MODERATE
-        forecast_rear = "LOW" if rear_threat != "HIGH" else "LOW"
+        forecast_rear = "LOW"
+
+        # Directional future window quality:
+        if pace_delta_1 is not None and pace_delta_1 < 0:
+            quality = FutureWindowQuality.STRONG  # Demonstrable pace advantage compressing gap
+        elif pace_delta_1 is not None and pace_delta_1 > 0.20:
+            quality = FutureWindowQuality.WEAK  # Deployment cannot overcome defender pace dominance
+        else:
+            quality = FutureWindowQuality.MODERATE
 
     else:  # OVERTAKE
         if rule_check.result == "BLOCKED":
-            # Cannot gain position if blocked by regulation
             gap_delta = 0.0
             time_consequence = 0.0
             pos_delta = 0
             quality = FutureWindowQuality.WEAK
             forecast_rear = rear_threat
+        elif rule_check.result == "UNKNOWN":
+            gap_delta = 0.0
+            time_consequence = 0.0
+            pos_delta = 0
+            quality = FutureWindowQuality.UNKNOWN
+            forecast_rear = rear_threat
         else:
-            # If eligible and pass window exists
             p2 = pass_window.p2 or 0.0
             is_successful_pass = (p2 >= 0.50) or (gap_s <= 0.6)
             pos_delta = 1 if is_successful_pass else 0
-            gap_delta = round(-gap_s, 2) if is_successful_pass else round(-0.15 * horizon_laps, 2)
-            time_consequence = round(-0.35 * horizon_laps, 2)
+            gap_delta = (
+                round(-gap_s, 2)
+                if is_successful_pass
+                else round(-act_prof.default_pace_gain_s_per_lap * horizon_laps, 2)
+            )
+            time_consequence = round(act_prof.lap_time_consequence_s_per_lap * horizon_laps, 2)
 
+            # Durability evidence check:
             if stability_snapshot.verdict == "HIGH_RISK":
-                # High risk of repass degrades future window quality
+                # High post-pass risk degrades future window quality
                 quality = FutureWindowQuality.WEAK
-            elif is_successful_pass:
+            elif is_successful_pass and stability_snapshot.verdict != "HIGH_RISK":
                 quality = FutureWindowQuality.STRONG
             else:
                 quality = FutureWindowQuality.MODERATE
@@ -362,6 +447,8 @@ def simulate_action_forecast(
         future_window_quality=quality,
         rear_threat=forecast_rear,
         terminal_energy_mj=nominal_terminal_energy_mj,
+        provenance="FORECAST_SIMULATION",
+        status="CONFIG_ASSUMPTION",
     )
 
 
@@ -373,9 +460,10 @@ def simulate_action_outcome(
     pass_window: PassWindowSnapshot,
     stability_result: Optional[StabilityResult],
     horizon_laps: int = 3,
+    strategy_config: Optional[StrategyCounterfactualConfig] = None,
 ) -> ActionOutcomeSnapshot:
     """Evaluate a single strategist decision alternative with guaranteed isolation.
-    
+
     Never mutates inputs. Uses strictly cloned values.
     """
     # Defensive copies of input states (Fair Baseline invariant)
@@ -384,10 +472,20 @@ def simulate_action_outcome(
 
     track_status = r_copy.get("track_status", "1")
     event_id = r_copy.get("event_id")
+    battle_sector = b_copy.get("sector") or b_copy.get("current_sector")
+    yellow_flag_sectors = r_copy.get("yellow_sectors") or b_copy.get("yellow_flag_sectors")
+    yellow_zone_active = b_copy.get("yellow_zone_active")
+
+    cfg = strategy_config or load_strategy_counterfactual_config()
 
     # 1. Regulation check
     rule_check = evaluate_action_rule_check(
-        action=action, track_status=track_status, event_id=event_id
+        action=action,
+        track_status=track_status,
+        event_id=event_id,
+        battle_sector=battle_sector,
+        yellow_flag_sectors=yellow_flag_sectors,
+        yellow_zone_active=yellow_zone_active,
     )
 
     # 2. Energy accounting & scenarios
@@ -395,6 +493,7 @@ def simulate_action_outcome(
         action=action,
         available_energy_mj=available_energy_mj,
         horizon_laps=horizon_laps,
+        strategy_config=cfg,
     )
 
     # 3. Pass context (ML TRUTH: action_effect_available strictly False)
@@ -403,6 +502,7 @@ def simulate_action_outcome(
         current_p2=pass_window.p2,
         current_p3=pass_window.p3,
         action_effect_available=False,
+        provenance="FROZEN_MODEL",
     )
 
     # 4. Stability context
@@ -414,21 +514,28 @@ def simulate_action_outcome(
     nominal_terminal = (
         scenarios["NOMINAL"].terminal_energy_mj if "NOMINAL" in scenarios else None
     )
+    nominal_net = (
+        scenarios["NOMINAL"].net_delta_mj if "NOMINAL" in scenarios else None
+    )
     forecast = simulate_action_forecast(
         action=action,
         battle_data=b_copy,
         rule_check=rule_check,
         nominal_terminal_energy_mj=nominal_terminal,
+        nominal_net_energy_mj=nominal_net,
         stability_snapshot=action_stability,
         pass_window=pass_window,
         horizon_laps=horizon_laps,
+        strategy_config=cfg,
     )
 
     # Determine eligibility and reason codes
-    eligible = rule_check.result != "BLOCKED"
+    eligible = rule_check.result == "ALLOWED"
     exclusion_reasons = []
-    if not eligible:
+    if rule_check.result == "BLOCKED":
         exclusion_reasons.append(f"REGULATION_PROHIBITION: {rule_check.rule_ids}")
+    elif rule_check.result == "UNKNOWN":
+        exclusion_reasons.append(f"REGULATION_UNCERTAINTY: {rule_check.rule_ids}")
 
     reason_codes = []
     if action == StrategistAction.CONSERVE:
@@ -440,8 +547,10 @@ def simulate_action_outcome(
     elif action == StrategistAction.OVERTAKE:
         if eligible:
             reason_codes.append("COMMIT_TO_PASS_WINDOW")
-        else:
+        elif rule_check.result == "BLOCKED":
             reason_codes.append("OVERTAKE_BLOCKED_BY_RACE_CONTROL")
+        else:
+            reason_codes.append("OVERTAKE_REGULATORY_STATUS_UNKNOWN")
 
     return ActionOutcomeSnapshot(
         action=action,

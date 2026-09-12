@@ -200,6 +200,16 @@ class FIARegulationConfig(BaseModel):
         ge=0.0,
         description="Operational capacity delta between maximum and minimum state of charge (MJ). NOT a per-lap quota.",
     )
+    base_recharge_limit_mj: float = Field(
+        8.5, ge=0.0, description="Article C5.2.10 baseline maximum Energy Store recovery limit per lap in MJ"
+    )
+    conditional_recharge_allowance_mj: float = Field(
+        0.5, ge=0.0, description="Article B7.2 conditional additional recharge allowance up to 0.5 MJ/lap"
+    )
+    b7_2_recharge_allowance_active: bool = Field(
+        False,
+        description="Whether Article B7.2 conditional additional recharge allowance is applicable under verified event conditions",
+    )
     recharge_limit_mj: float = Field(
         8.5, ge=0.0, description="Baseline maximum Energy Store recovery limit per lap in MJ"
     )
@@ -238,13 +248,20 @@ class FIARegulationConfig(BaseModel):
         self.detection_line = f"{event_config.detection_line.loop} ({event_config.detection_line.distance_m:.0f}m)"
         self.activation_line = f"{event_config.activation_line.loop} ({event_config.activation_line.distance_m:.0f}m)"
 
-    def get_effective_recharge_limit_mj(self, is_overtake_active: bool = False) -> float:
+    def get_effective_recharge_limit_mj(
+        self,
+        is_overtake_active: bool = False,
+        b7_2_applicable: Optional[bool] = None,
+    ) -> float:
         """Return effective recharge limit adhering to the hierarchy:
         1. Event-specific FIA configuration (if set):
            - if overtake active: race_recharge_limit_mj.overtake_active (e.g. 8.5 MJ)
            - if overtake inactive: race_recharge_limit_mj.overtake_inactive (e.g. 8.0 MJ)
         2. Fallback event_specific_recharge_limit_mj on FIARegulationConfig (if set)
-        3. Global baseline recharge_limit_mj (8.5 MJ)
+        3. Global baseline: base_recharge_limit_mj (8.5 MJ)
+           - If b7_2_applicable is True (or b7_2_recharge_allowance_active is True),
+             adds conditional_recharge_allowance_mj (up to 0.5 MJ, yielding 9.0 MJ).
+           - If applicability is False, None, or unconfirmed, DO NOT grant the additional allowance.
         """
         if self.event_config is not None:
             if is_overtake_active:
@@ -252,7 +269,16 @@ class FIARegulationConfig(BaseModel):
             return self.event_config.race_recharge_limit_mj.overtake_inactive
         if self.event_specific_recharge_limit_mj is not None:
             return self.event_specific_recharge_limit_mj
-        return self.recharge_limit_mj
+
+        base = self.base_recharge_limit_mj
+        is_b7_2 = (
+            b7_2_applicable
+            if b7_2_applicable is not None
+            else self.b7_2_recharge_allowance_active
+        )
+        if is_b7_2:
+            base += self.conditional_recharge_allowance_mj
+        return base
 
     def get_unconfigured_parameters(self) -> List[str]:
         """List sporting / circuit parameters that are unconfigured (None)."""

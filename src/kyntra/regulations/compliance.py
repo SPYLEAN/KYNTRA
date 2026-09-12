@@ -1,14 +1,12 @@
-"""Deterministic regulation compliance engine scaffold for FIA 2026 rules.
-
-Evaluates tactical energy decisions against FIA 2026 technical and sporting regulations.
-Never fabricates missing regulation parameters and returns explicit reason codes.
-"""
+from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field
-from kyntra.energy.state import EnergyState, TelemetrySource
 from kyntra.regulations.models import FIARegulationConfig
+
+if TYPE_CHECKING:
+    from kyntra.energy.state import EnergyState
 
 
 class ComplianceReason(str, Enum):
@@ -51,6 +49,8 @@ def check_overtake_legality(
     5. Driver eligibility at detection point.
     6. Minimum Energy Store reserve.
     """
+    from kyntra.energy.state import TelemetrySource
+
     # 1. Neutralized race conditions
     if config.safety_car_active:
         return ComplianceResult(
@@ -163,15 +163,20 @@ def check_recharge_limit(
     proposed_harvest_mj: float,
     current_lap_harvested_mj: float,
     is_overtake_active: bool = False,
+    b7_2_applicable: Optional[bool] = None,
 ) -> ComplianceResult:
     """Verify that proposed MGU-K recovery will not breach the per-lap recharge limit.
 
     Adheres to the regulatory hierarchy:
-    1. Global FIA regulation default (8.5 MJ baseline)
-    2. Event-specific FIA configuration (e.g. Australia 8.0 MJ inactive, 8.5 MJ active)
-    3. Current race state (is_overtake_active flag)
+    1. Global FIA regulation default (8.5 MJ baseline, Article C5.2.10)
+    2. Article B7.2 conditional allowance (up to 0.5 MJ, only when verified applicable)
+    3. Event-specific FIA configuration (e.g. Australia 8.0 MJ inactive, 8.5 MJ active)
+    4. Current race state (is_overtake_active flag)
     """
-    effective_limit = config.get_effective_recharge_limit_mj(is_overtake_active=is_overtake_active)
+    effective_limit = config.get_effective_recharge_limit_mj(
+        is_overtake_active=is_overtake_active,
+        b7_2_applicable=b7_2_applicable,
+    )
     projected_total = proposed_harvest_mj + current_lap_harvested_mj
 
     if projected_total > (effective_limit + 1e-4):
