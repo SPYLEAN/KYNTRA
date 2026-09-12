@@ -209,6 +209,22 @@ class DecisionSnapshot(BaseModel):
     counterfactuals: List[CounterfactualActionSnapshot]
     recommendation: RecommendationSnapshot
     strategy_matrix: Optional[Dict[str, Any]] = None
+    decision_id: Optional[str] = None
+    published_call: Optional[Dict[str, Any]] = None
+    final_gate_result: Optional[Dict[str, Any]] = None
+    is_reanalysis: bool = False
+    model_sha256: Optional[str] = None
+    stability_manifest_sha256: Optional[str] = None
+    strategy_config_sha256: Optional[str] = None
+    ranking_config_sha256: Optional[str] = None
+    publication_config_sha256: Optional[str] = None
+    rule_bundle_version: Optional[str] = "2026_FIA_ISSUE_20"
+    dataset_sha256: Optional[str] = None
+    event_time: Optional[str] = None
+    received_time: Optional[str] = None
+    decision_time: Optional[str] = None
+    gate_time: Optional[str] = None
+    published_at: Optional[str] = None
 
 
 # ==============================================================================

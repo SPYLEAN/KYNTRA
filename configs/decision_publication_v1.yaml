@@ -1,0 +1,70 @@
+# ==============================================================================
+# KYNTRA Decision Publication Configuration V1
+# Freshness Budgets, Lifecycle Thresholds & Final Gate Assumptions
+# ==============================================================================
+# IMPORTANT: All time budgets in this configuration are CONFIG_ASSUMPTIONs
+# calibrated for real-time tactical pit-wall decision support. They are NOT
+# universal physical laws or official FIA regulations.
+# ==============================================================================
+
+version: "1.0.0"
+description: "Versioned configuration for final safety gate evaluation, call publication, and lifecycle staleness tracking"
+
+freshness_budgets:
+  battle_state:
+    value: 2.50
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Maximum allowable age of battle state telemetry before publication is withheld"
+    rationale: "Tactical closing gaps change rapidly in braking zones; updates older than 2.5s cannot ensure physical pass safety"
+
+  race_control:
+    value: 1.50
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Maximum allowable age of race control flag messages before publication"
+    rationale: "Safety car and neutralization flags must be reflected immediately to prevent illegal pass directives"
+
+  energy_state:
+    value: 3.00
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Maximum allowable age of simulated energy accounting state"
+    rationale: "Usable MGU-K state changes on a per-second deployment basis; stale energy state risks power depletion"
+
+  model_features:
+    value: 3.00
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Maximum allowable latency of upstream kinematic feature pipeline"
+    rationale: "Inference features must represent the current sector battle state"
+
+  matrix_snapshot:
+    value: 4.00
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Maximum allowable age of candidate StrategistMatrixSnapshot before final gate approval"
+    rationale: "Ensures candidate recommendations are re-evaluated if pit-wall evaluation cycle is delayed"
+
+call_lifecycle:
+  validity_budget_s:
+    value: 6.00
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Nominal operational lifetime of a published tactical call before transition to EXPIRED"
+    rationale: "Tactical directives are ephemeral; after 6 seconds a fresh decision cycle must re-verify race state"
+
+  aging_threshold_fraction:
+    value: 0.70
+    unit: "ratio"
+    status: "CONFIG_ASSUMPTION"
+    description: "Fraction of validity budget elapsed before call transitions to AGING state"
+    rationale: "Alerts pit-wall engineers that recommendation is nearing the end of its temporal applicability"
+
+temporal_coherence:
+  max_cross_stream_skew_s:
+    value: 1.50
+    unit: "seconds"
+    status: "CONFIG_ASSUMPTION"
+    description: "Maximum allowable skew between car telemetry and race control timestamps"
+    rationale: "Prevents mixing outdated sector timing with newly deployed neutralization procedures"

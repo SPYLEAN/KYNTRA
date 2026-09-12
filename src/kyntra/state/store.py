@@ -6,7 +6,7 @@ coherence across all live pit-wall panels.
 """
 
 import threading
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from kyntra.schemas import (
     BattleState,
@@ -88,6 +88,16 @@ class CurrentStateStore:
     def get_all_windows(self) -> Dict[str, WindowState]:
         with self._lock:
             return dict(self._active_windows)
+
+    def update_published_call(self, call: Any) -> None:
+        """Update current published call atomically."""
+        with self._lock:
+            self._current_published_call = call
+
+    def get_published_call(self) -> Optional[Any]:
+        """Retrieve current published call."""
+        with self._lock:
+            return getattr(self, "_current_published_call", None)
 
 
 # Singleton instance

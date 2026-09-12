@@ -556,3 +556,123 @@ def get_forecast(event_id: str) -> Dict[str, Any]:
     }
 
 
+# ==============================================================================
+# Phase 09 Decision Publication Gate & Forensic Audit Endpoints
+# ==============================================================================
+
+@router.get("/strategy/call/current")
+def get_current_published_call(battle_id: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve the current published KYNTRA call for an active battle or globally."""
+    from kyntra.decision.store import get_decision_store
+    from kyntra.publication.lifecycle import evaluate_call_staleness
+    from kyntra.publication.models import PublishedCallSnapshot, CallLifecycleState
+
+    raw_call = get_decision_store().get_latest_call(battle_id)
+    if not raw_call:
+        return {
+            "available": False,
+            "lifecycle_state": CallLifecycleState.WITHHELD.value,
+            "published_call": None,
+            "message": "NO_CURRENT_PUBLISHED_CALL",
+        }
+
+    call_snap = PublishedCallSnapshot(**raw_call)
+    fresh_call = evaluate_call_staleness(call_snap)
+
+    is_valid = fresh_call.lifecycle_state in [CallLifecycleState.VALID, CallLifecycleState.AGING]
+    return {
+        "available": is_valid,
+        "lifecycle_state": fresh_call.lifecycle_state.value,
+        "published_call": fresh_call.model_dump(),
+        "ui_call": fresh_call.ui_call if is_valid else None,
+        "backend_action": fresh_call.backend_action if is_valid else None,
+    }
+
+
+@router.get("/strategy/call/status")
+def get_call_lifecycle_status(battle_id: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve the lifecycle status, freshness, and gate checks of the latest tactical call."""
+    from kyntra.decision.store import get_decision_store
+    from kyntra.publication.lifecycle import evaluate_call_staleness
+    from kyntra.publication.models import PublishedCallSnapshot, CallLifecycleState
+
+    raw_call = get_decision_store().get_latest_call(battle_id)
+    if not raw_call:
+        return {
+            "has_call": False,
+            "lifecycle_state": CallLifecycleState.WITHHELD.value,
+            "primary_reason": "NO_CALL_RECORDED",
+        }
+
+    call_snap = PublishedCallSnapshot(**raw_call)
+    fresh_call = evaluate_call_staleness(call_snap)
+    return {
+        "has_call": True,
+        "call_id": fresh_call.call_id,
+        "battle_id": fresh_call.battle_id,
+        "lifecycle_state": fresh_call.lifecycle_state.value,
+        "primary_reason": fresh_call.primary_reason,
+        "published_at": fresh_call.published_at,
+        "valid_until": fresh_call.valid_until,
+        "robustness": fresh_call.robustness,
+        "reason_codes": fresh_call.reason_codes,
+    }
+
+
+@router.get("/strategy/call/history/{battle_id}")
+def get_battle_call_history(battle_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieve chronological history of all published/expired/invalidated calls for a battle."""
+    from kyntra.decision.store import get_decision_store
+
+    return get_decision_store().get_call_history(battle_id=battle_id, limit=limit)
+
+
+@router.get("/decision/{decision_id}")
+def get_forensic_decision_snapshot(decision_id: str) -> Dict[str, Any]:
+    """Retrieve an immutable forensic DecisionSnapshot by unique decision ID."""
+    from kyntra.decision.store import get_decision_store
+
+    snap = get_decision_store().get_decision(decision_id)
+    if not snap:
+        raise HTTPException(status_code=404, detail=f"DecisionSnapshot '{decision_id}' not found.")
+    return snap
+
+
+@router.post("/strategy/publish/evaluate")
+def evaluate_publication_and_decision(req: DecisionRequest) -> Dict[str, Any]:
+    """Evaluate full decision loop with 6-tier ranking, 7-point final gate, and forensic persistence."""
+    from kyntra.decision.engine import compute_decision
+
+    race_data = {
+        "event_id": req.event_id,
+        "event_name": EVENT_INFO.get(req.event_id or "", {}).get("event_name", "Custom Grand Prix"),
+        "lap": req.lap,
+        "attacker": req.attacker,
+        "defender": req.defender,
+        "track_status": req.track_status,
+        "mode": "LIVE_PITWALL",
+        "source_mode": "SYNTHETIC_EVALUATION",
+    }
+    battle_data = {
+        "gap_seconds": req.gap_seconds,
+        "closing_rate": req.closing_rate,
+        "recent_pace_delta_1lap": req.recent_pace_delta_1lap,
+        "recent_pace_delta_3laps": req.recent_pace_delta_3laps,
+        "speed_trap_delta": req.speed_trap_delta,
+        "tyre_age_delta": req.tyre_age_delta,
+        "rear_threat": req.rear_threat,
+    }
+    energy_data = {
+        "available_energy_mj": req.available_energy_mj,
+    }
+
+    snap = compute_decision(
+        race_data=race_data,
+        battle_data=battle_data,
+        simulated_energy_state=energy_data,
+        enable_publication_gate=True,
+    )
+    return snap.model_dump()
+
+
+

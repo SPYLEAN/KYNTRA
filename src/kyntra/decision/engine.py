@@ -8,11 +8,17 @@ Integrates:
 5. Counterfactual action evaluation & KYNTRA Call — PENDING VERIFICATION (AWAITING STRATEGY ENGINE)
 """
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import uuid
+
+from kyntra.decision.store import get_decision_store
 from kyntra.models.registry import get_overtake_model
+from kyntra.publication import evaluate_final_publication_gate, load_publication_config
 from kyntra.stability import evaluate_stability as run_stability_evaluation
 from kyntra.strategy.matrix import generate_strategy_matrix
+from kyntra.strategy.models import CandidateRecommendation
 from kyntra.schemas import (
     BattleStateSnapshot,
     ComplianceSnapshot,
@@ -165,11 +171,13 @@ def compute_decision(
     race_data: Dict[str, Any],
     battle_data: Dict[str, Any],
     simulated_energy_state: Optional[Dict[str, Any]] = None,
+    enable_publication_gate: bool = False,
+    is_reanalysis: bool = False,
 ) -> DecisionSnapshot:
     """Generate a single coherent DecisionSnapshot across all 5 decision pillars.
 
-    Phase 3.1 Hardened: Real ML pass probabilities and simulated 2026 energy are active;
-    unverified Phase 4 strategy, ranking, and stability heuristics are safely disabled.
+    When enable_publication_gate=True, evaluates lexicographic strategy ranking and runs
+    the 7-point Final Publication Gate immediately prior to publishing the tactical call.
     """
     # 1. Race state
     event_id = race_data.get("event_id")
@@ -270,7 +278,7 @@ def compute_decision(
         event_id=event_id,
     )
 
-    # 7. Counterfactual scenarios — Action shells preserved without arbitrary ranking or fabricated deltas
+    # 7. Counterfactual scenarios — Action shells
     cf_actions = [
         CounterfactualActionSnapshot(
             action=act,
@@ -286,9 +294,7 @@ def compute_decision(
         for act in ["CONSERVE", "BUILD", "DEPLOY", "OVERTAKE"]
     ]
 
-    # 8. Recommendation Logic (KYNTRA Call) — Hardened pending strategy verification
-    # Separate strategy-policy reasons from compliance rules:
-    # Under neutralization, tactical energy DEPLOY is suppressed as strategy policy.
+    # 8. Recommendation Logic (KYNTRA Call)
     ts_rec = str(race_data.get("track_status") or "1").strip()
     is_neutralized = ts_rec in ["2", "4", "5", "6", "7", "YELLOW", "SC", "VSC", "RED"]
     rec_reason = "TRACK_NEUTRALIZED" if is_neutralized else "STRATEGY_ENGINE_PENDING_VERIFICATION"
@@ -319,9 +325,62 @@ def compute_decision(
         race_data=race_data,
         battle_data=battle_data,
         simulated_energy_state=simulated_energy_state,
+        enable_ranking=enable_publication_gate,
     )
 
-    return DecisionSnapshot(
+    now_iso = datetime.now(timezone.utc).isoformat()
+    dec_id = f"DEC_{race_data.get('attacker', 'ANT')}_{race_data.get('defender', 'VER')}_{race_data.get('lap', 1)}_{uuid.uuid4().hex[:8]}"
+
+    published_call_dict = None
+    final_gate_dict = None
+    gate_time = None
+    published_at = None
+
+    if enable_publication_gate:
+        cand_dict = matrix_snap.recommendation or {}
+        cand_rec = CandidateRecommendation(**cand_dict)
+        pub_cfg = load_publication_config()
+        gate_res = evaluate_final_publication_gate(
+            candidate=cand_rec,
+            matrix=matrix_snap,
+            current_race_data=race_data,
+            current_battle_data=battle_data,
+            current_energy_state=simulated_energy_state,
+            current_rule_state={"track_status": race_data.get("track_status")},
+            publication_config=pub_cfg,
+            is_reanalysis=is_reanalysis,
+        )
+        final_gate_dict = gate_res.model_dump()
+        gate_time = gate_res.gate_time
+
+        if gate_res.published_call:
+            dec_id = gate_res.published_call.decision_snapshot_id
+            published_call_dict = gate_res.published_call.model_dump()
+            published_at = gate_res.published_call.published_at
+
+            # Map into RecommendationSnapshot for backward-compatible pit-wall views
+            recommendation = RecommendationSnapshot(
+                available=True,
+                canonical_action=gate_res.published_call.backend_action,
+                ui_label=gate_res.published_call.ui_call,
+                robust=gate_res.published_call.robustness == "ROBUST_WITHIN_TESTED_ASSUMPTIONS",
+                energy_sensitive=gate_res.published_call.robustness == "ENERGY_SENSITIVE",
+                why=gate_res.published_call.why_selected,
+                reason=gate_res.published_call.primary_reason,
+            )
+        else:
+            recommendation = RecommendationSnapshot(
+                available=False,
+                canonical_action=None,
+                ui_label=None,
+                robust=None,
+                energy_sensitive=None,
+                why=[],
+                reason=gate_res.primary_reason,
+            )
+
+    pub_cfg = load_publication_config()
+    decision_snap = DecisionSnapshot(
         race=race,
         provenance=provenance,
         battle=battle,
@@ -332,4 +391,31 @@ def compute_decision(
         counterfactuals=cf_actions,
         recommendation=recommendation,
         strategy_matrix=matrix_snap.model_dump(),
+        decision_id=dec_id,
+        published_call=published_call_dict,
+        final_gate_result=final_gate_dict,
+        is_reanalysis=is_reanalysis,
+        model_sha256=matrix_snap.model_sha256,
+        stability_manifest_sha256=matrix_snap.stability_manifest_sha256,
+        strategy_config_sha256=matrix_snap.strategy_config_sha256,
+        ranking_config_sha256=matrix_snap.ranking.get("ranking_config_sha256"),
+        publication_config_sha256=pub_cfg.sha256,
+        rule_bundle_version=matrix_snap.rule_bundle_version,
+        dataset_sha256=matrix_snap.dataset_sha256,
+        event_time=race_data.get("event_time"),
+        received_time=race_data.get("received_time") or now_iso,
+        decision_time=now_iso,
+        gate_time=gate_time,
+        published_at=published_at,
     )
+
+    # Persist in append-only forensic DecisionStore
+    try:
+        get_decision_store().record_decision(
+            snapshot=decision_snap,
+            published_call=gate_res.published_call if enable_publication_gate and gate_res.published_call else None,
+        )
+    except Exception:
+        pass
+
+    return decision_snap
