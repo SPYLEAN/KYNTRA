@@ -104,6 +104,10 @@ export interface DecisionSnapshot {
   compliance: ComplianceSnapshot;
   counterfactuals: CounterfactualActionSnapshot[];
   recommendation: RecommendationSnapshot;
+  decision_id?: string;
+  strategy_matrix?: any;
+  published_call?: any;
+  final_gate_result?: any;
 }
 
 export interface EventInfo {
@@ -271,11 +275,11 @@ export interface LiveUpdatePayload {
 }
 
 export type OperatingMode = 'LIVE' | 'REPLAY' | 'FORECAST';
-export type ContextWorkspace = 'RACE' | 'BATTLE' | 'STRATEGY' | 'EVENTS' | 'SYSTEM';
+export type ContextWorkspace = 'RACE' | 'STRATEGY' | 'REPLAY' | 'ANALYSIS' | 'SYSTEM' | 'BATTLE' | 'EVENTS';
 
 export type WorkspaceId = 'LIVE' | 'REPLAY' | 'FORECAST' | 'RACE' | 'BATTLE' | 'STRATEGY' | 'COUNTERFACTUALS' | 'EVENTS' | 'SYSTEM';
 
-export type SystemTabId = 'OVERVIEW' | 'DATA' | 'MODEL' | 'ENERGY' | 'FIA' | 'PROVIDERS' | 'LIMITATIONS';
+export type SystemTabId = 'OVERVIEW' | 'DATA' | 'MODEL' | 'ENERGY' | 'FIA' | 'PROVIDERS' | 'LIMITATIONS' | 'TECH_STACK';
 
 export type InspectorType = 'MODEL' | 'ENERGY' | 'COMPLIANCE' | 'CAR' | 'BATTLE' | 'EVENT' | null;
 
@@ -359,5 +363,204 @@ export interface TelemetryPoint {
   p1?: number;
   p2?: number;
   p3?: number;
+}
+
+export type RuntimeMode = 'LIVE_FEED' | 'CAPTURED_LIVE' | 'HISTORICAL_REPLAY' | 'REANALYSIS' | 'SYNTHETIC_TEST';
+export type SystemHealthStatus = 'OPERATIONAL' | 'DEGRADED' | 'DECISION_BLOCKED' | 'OFFLINE';
+
+export interface ModuleHealth {
+  module_name: string;
+  status: 'OPERATIONAL' | 'DEGRADED' | 'FAILED' | 'UNKNOWN';
+  reason?: string | null;
+  freshness_s?: number;
+  latency_ms?: number;
+}
+
+export interface RuntimeHealthSnapshot {
+  system_health: SystemHealthStatus;
+  modules: Record<string, ModuleHealth>;
+  updated_at: string;
+}
+
+export interface LatencyMetrics {
+  ingestion_ms: number;
+  features_ms: number;
+  inference_ms: number;
+  matrix_ms: number;
+  ranking_ms: number;
+  gate_ms: number;
+  total_cycle_ms: number;
+  rolling_total_p50_ms: number;
+  rolling_total_p95_ms: number;
+}
+
+export interface ActiveBattleTracker {
+  battle_id: string;
+  attacker: string;
+  defender: string;
+  first_seen_lap: number;
+  last_seen_lap: number;
+  laps_active: number;
+  consecutive_active_ticks: number;
+  current_gap_s: number;
+  is_continuous_over_laps: boolean;
+  is_expired: boolean;
+  window_state: string;
+}
+
+export interface StrategyMatrixActionData {
+  action: 'CONSERVE' | 'BUILD' | 'DEPLOY' | 'OVERTAKE';
+  rule_eligibility: {
+    status: 'ALLOWED' | 'BLOCKED' | 'UNKNOWN';
+    rule_id?: string | null;
+    reason_code?: string | null;
+    article?: string | null;
+    provenance: string;
+  };
+  pass_context: {
+    p_pass_1_lap?: number | null;
+    p_pass_2_laps?: number | null;
+    p_pass_3_laps?: number | null;
+    horizon_applied: boolean;
+    provenance: string;
+    model_sha256?: string | null;
+  };
+  energy_accounting: {
+    before_energy_mj: number;
+    deployment_mj: number;
+    recovery_mj: number;
+    terminal_energy_mj: number;
+    scenario: string;
+    assumption_profile: string;
+    provenance: string;
+  };
+  post_pass_stability: {
+    verdict: 'FAVORABLE' | 'CAUTION' | 'HIGH_RISK' | 'UNKNOWN';
+    available: boolean;
+    reason: string;
+    manifest_version: string;
+    provenance: string;
+  };
+  future_opportunity: {
+    opportunity_label: string;
+    next_lap_energy_headroom_mj: number;
+    expected_window_strength: string;
+    provenance: string;
+  };
+  kinematic_consequence: {
+    projected_position: number;
+    gap_consequence_s: number;
+    lap_time_consequence_s: number;
+    provenance: string;
+  };
+  scenario_robustness?: Record<string, any>;
+  ranking_result?: {
+    rank?: number | null;
+    selected: boolean;
+    excluded: boolean;
+    elimination_tier?: string | null;
+    elimination_reason?: string | null;
+  };
+}
+
+export interface StrategyMatrixSnapshotData {
+  matrix_id: string;
+  battle_id: string;
+  evaluation_timestamp: string;
+  fair_baseline: Record<string, any>;
+  actions: Record<'CONSERVE' | 'BUILD' | 'DEPLOY' | 'OVERTAKE', StrategyMatrixActionData>;
+  ranking?: {
+    available: boolean;
+    winner?: string | null;
+    ranked_actions?: string[];
+    excluded_actions?: string[];
+    robustness?: string | null;
+    scenario_winners?: Record<string, string>;
+    ranking_trace?: Record<string, any>;
+  };
+  recommendation?: {
+    canonical_action?: string | null;
+    ui_call?: string | null;
+    publication_status?: string | null;
+    why_selected?: string[];
+    why_not?: Record<string, string>;
+    primary_reason?: string | null;
+    robustness?: string | null;
+    scenario_winners?: Record<string, string>;
+  };
+  provenance: Record<string, string>;
+  rule_bundle_version?: string;
+}
+
+export interface PublishedCallSnapshotData {
+  call_id: string;
+  decision_snapshot_id: string;
+  battle_id: string;
+  event_id: string;
+  lap: number;
+  ui_call: 'SAVE ENERGY' | 'PREPARE' | 'APPLY PRESSURE' | 'OVERTAKE NOW';
+  backend_action: 'CONSERVE' | 'BUILD' | 'DEPLOY' | 'OVERTAKE';
+  lifecycle_state: 'VALID' | 'AGING' | 'EXPIRED' | 'BLOCKED' | 'WITHHELD' | 'INVALIDATED' | 'PENDING_FINAL_GATE';
+  published_at: string;
+  valid_until: string;
+  staleness_threshold_s: number;
+  gate_checks: Record<string, boolean>;
+  robustness: 'ROBUST_WITHIN_TESTED_ASSUMPTIONS' | 'ENERGY_SENSITIVE' | 'INSUFFICIENT_INFORMATION';
+  scenario_winners: Record<string, string>;
+  why_selected: string[];
+  why_not: Record<string, string>;
+  primary_reason: string;
+  reason_codes: string[];
+}
+
+export interface KyntraRuntimeSnapshot {
+  runtime_id: string;
+  mode: RuntimeMode;
+  event_id: string;
+  session_key?: string | null;
+  current_lap: number;
+  source_timestamps: Record<string, string | null>;
+  provider_status: Record<string, any>;
+  freshness: Record<string, any>;
+  active_battles: ActiveBattleTracker[];
+  selected_battle_id?: string | null;
+  current_matrix?: StrategyMatrixSnapshotData | null;
+  current_ranking?: Record<string, any> | null;
+  candidate_call?: Record<string, any> | null;
+  published_call?: PublishedCallSnapshotData | null;
+  call_lifecycle: 'VALID' | 'AGING' | 'EXPIRED' | 'BLOCKED' | 'WITHHELD' | 'INVALIDATED' | 'PENDING_FINAL_GATE';
+  race_control: Record<string, any>;
+  energy_availability: Record<string, any>;
+  model_identities: Record<string, any>;
+  decision_snapshot_id?: string | null;
+  health: RuntimeHealthSnapshot;
+  latencies: LatencyMetrics;
+}
+
+export type ProvenanceType =
+  | 'LIVE'
+  | 'PUBLIC SOURCE'
+  | 'DERIVED'
+  | 'FROZEN MODEL'
+  | 'SIMULATED ENERGY'
+  | 'RULE CHECK'
+  | 'FORECAST SIMULATION'
+  | 'ORDINAL STABILITY'
+  | 'HISTORICAL'
+  | 'UNKNOWN'
+  | 'CONFIG_ASSUMPTION';
+
+export interface EvidenceInspectionTarget {
+  title: string;
+  value: string;
+  status: 'VALID' | 'CAUTION' | 'BLOCKED' | 'UNKNOWN' | 'SIMULATED' | 'INFO';
+  provenance: ProvenanceType;
+  method?: string;
+  version?: string;
+  timestamp?: string;
+  evidenceItems?: { label: string; value: string; note?: string }[];
+  configIdentities?: Record<string, string>;
+  reasonCodes?: string[];
+  rawObject?: Record<string, any>;
 }
 

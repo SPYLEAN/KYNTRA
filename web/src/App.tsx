@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type {
+  ActiveBattleTracker,
   BattleWatchlistItem,
+  ContextWorkspace,
   DecisionSnapshot,
-  InspectorTarget,
+  EvidenceInspectionTarget,
+  KyntraRuntimeSnapshot,
   LiveUpdatePayload,
   RaceEvent,
   RaceState,
@@ -10,33 +13,23 @@ import type {
   TimelineMarker,
   TrackGeometry,
   WindowState,
-  OperatingMode,
-  ContextWorkspace,
-  LayoutPreset,
 } from './types';
-import { Header } from './components/Header';
-import { TimelineScrubber } from './components/TimelineScrubber';
-import { ContextInspector } from './components/ContextInspector';
-import { SessionSwitcher } from './components/SessionSwitcher';
-import { LiveWorkspace } from './components/workspaces/LiveWorkspace';
-import { AnalysisWorkspace } from './components/workspaces/AnalysisWorkspace';
-import { DemoWorkspace } from './components/workspaces/DemoWorkspace';
-import { ReplayWorkspace } from './components/workspaces/ReplayWorkspace';
-import { ForecastWorkspace } from './components/workspaces/ForecastWorkspace';
-import { BattleWorkspace } from './components/workspaces/BattleWorkspace';
+import { AppShell } from './components/shell/AppShell';
+import { RaceWorkspace } from './components/race/RaceWorkspace';
 import { StrategyWorkspace } from './components/workspaces/StrategyWorkspace';
-import { EventsWorkspace } from './components/workspaces/EventsWorkspace';
+import { ReplayWorkspace } from './components/workspaces/ReplayWorkspace';
+import { AnalysisWorkspace } from './components/workspaces/AnalysisWorkspace';
 import { SystemWorkspace } from './components/workspaces/SystemWorkspace';
+import { SessionSwitcher } from './components/SessionSwitcher';
+import { KyntraApiClient } from './api/client';
 
 export default function App() {
-  // Navigation & Workspace State: 3 Operating Modes + Contextual Workspaces + 3 Layout Presets
-  const [currentMode, setCurrentMode] = useState<OperatingMode>('LIVE');
-  const [layoutPreset, setLayoutPreset] = useState<LayoutPreset>('PIT_WALL');
+  // Navigation & Workspace State: 5 Workspaces (RACE, STRATEGY, REPLAY, ANALYSIS, SYSTEM)
   const [currentContext, setCurrentContext] = useState<ContextWorkspace>('RACE');
   const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
 
-  // Right-Side Unified Context Inspector State
-  const [inspectorTarget, setInspectorTarget] = useState<InspectorTarget | null>(null);
+  // Right-Side Universal Evidence Drawer Target
+  const [evidenceTarget, setEvidenceTarget] = useState<EvidenceInspectionTarget | null>(null);
 
   // Session Switcher State
   const [sessionSwitcherOpen, setSessionSwitcherOpen] = useState<boolean>(false);
@@ -45,25 +38,24 @@ export default function App() {
   // Keyboard Shortcuts Modal
   const [shortcutsOpen, setShortcutsOpen] = useState<boolean>(false);
 
-  // Timeline Markers State
-  const [timelineMarkers, setTimelineMarkers] = useState<TimelineMarker[]>([]);
-
-  // Live Intelligence Data State
+  // Operational State
+  const [runtimeSnapshot, setRuntimeSnapshot] = useState<KyntraRuntimeSnapshot | null>(null);
   const [raceState, setRaceState] = useState<RaceState | null>(null);
   const [decision, setDecision] = useState<DecisionSnapshot | null>(null);
   const [watchlist, setWatchlist] = useState<BattleWatchlistItem[]>([]);
+  const [activeBattles, setActiveBattles] = useState<ActiveBattleTracker[]>([]);
   const [activeWindows, setActiveWindows] = useState<Record<string, WindowState>>({});
   const [recentEvents, setRecentEvents] = useState<RaceEvent[]>([]);
+  const [timelineMarkers, setTimelineMarkers] = useState<TimelineMarker[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [trackGeometry, setTrackGeometry] = useState<TrackGeometry | null>(null);
+  const [decisionHistory, setDecisionHistory] = useState<any[]>([]);
 
   // Active event ID
   const [activeEventId, setActiveEventId] = useState<string>('2026_13_ITA');
-  const eventId = raceState?.session.event_id || activeEventId;
+  const eventId = runtimeSnapshot?.event_id || raceState?.session.event_id || activeEventId;
 
   // Transport Control State
-  const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [wsConnected, setWsConnected] = useState<boolean>(false);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -72,59 +64,40 @@ export default function App() {
   // 1. Fetch Track Geometry when event changes
   useEffect(() => {
     let isMounted = true;
-    fetch(`/api/track/${eventId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data: TrackGeometry) => {
-        if (isMounted) setTrackGeometry(data);
-      })
-      .catch((err) => console.warn('Failed to load track geometry:', err));
+    KyntraApiClient.getTrackGeometry(eventId).then((geo) => {
+      if (isMounted && geo) setTrackGeometry(geo);
+    });
+
+    KyntraApiClient.getTimelineMarkers(eventId).then((markers) => {
+      if (isMounted && markers) setTimelineMarkers(markers);
+    });
 
     return () => {
       isMounted = false;
     };
   }, [eventId]);
 
-  // 2. Fetch System Status
+  // 2. Initial System Status & Events History
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/system/status')
-      .then((res) => res.json())
-      .then((data: SystemStatus) => {
-        if (isMounted) setSystemStatus(data);
-      })
-      .catch((err) => console.warn('Failed to load system status:', err));
+    KyntraApiClient.getSystemStatus().then((status) => {
+      if (isMounted && status) setSystemStatus(status);
+    });
+
+    KyntraApiClient.getRecentEvents(50).then((evts) => {
+      if (isMounted && evts) setRecentEvents(evts);
+    });
+
+    KyntraApiClient.getRuntimeHistory(undefined, 20).then((hist) => {
+      if (isMounted && hist) setDecisionHistory(hist);
+    });
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // 3. Initial Events History & Timeline Markers
-  useEffect(() => {
-    let isMounted = true;
-    fetch('/api/events/history?limit=100')
-      .then((res) => res.json())
-      .then((data: RaceEvent[]) => {
-        if (isMounted) setRecentEvents(data);
-      })
-      .catch((err) => console.warn('Failed to load events history:', err));
-
-    fetch(`/api/events/markers?race_id=${eventId}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: TimelineMarker[]) => {
-        if (isMounted) setTimelineMarkers(data);
-      })
-      .catch((err) => console.warn('Failed to load markers:', err));
-
-    return () => {
-      isMounted = false;
-    };
-  }, [eventId]);
-
-  // 4. WebSocket Streaming Ingress with Auto-Reconnect
+  // 3. WebSocket Streaming Ingress with Auto-Reconnect
   useEffect(() => {
     let ws: WebSocket;
 
@@ -147,7 +120,6 @@ export default function App() {
             if (data.decision) setDecision(data.decision);
             if (data.watchlist) {
               setWatchlist(data.watchlist);
-              // Default to top priority battle if none selected
               if (!selectedBattleId && data.watchlist.length > 0) {
                 setSelectedBattleId(data.watchlist[0].battle_id);
               }
@@ -157,7 +129,7 @@ export default function App() {
               setRecentEvents((prev) => {
                 const existingIds = new Set(prev.map((e) => e.event_id));
                 const newItems = data.recent_events.filter((e) => !existingIds.has(e.event_id));
-                return [...newItems, ...prev].slice(0, 200);
+                return [...newItems, ...prev].slice(0, 100);
               });
             }
           } catch (e) {
@@ -188,16 +160,36 @@ export default function App() {
     };
   }, [selectedBattleId]);
 
-  // Fallback REST polling if WebSocket is unavailable
+  // 4. Canonical Runtime Orchestrator Polling (/api/runtime)
+  // Ensures full Strategy Matrix, Ranking, Published Call, and Health are continuously fresh
+  useEffect(() => {
+    const fetchRuntime = async () => {
+      const snap = await KyntraApiClient.getRuntimeSnapshot();
+      if (snap) {
+        setRuntimeSnapshot(snap);
+        if (snap.active_battles && snap.active_battles.length > 0) {
+          setActiveBattles(snap.active_battles);
+          if (!selectedBattleId) {
+            setSelectedBattleId(snap.selected_battle_id || snap.active_battles[0].battle_id);
+          }
+        }
+      }
+    };
+
+    fetchRuntime();
+    const interval = setInterval(fetchRuntime, 1000);
+    return () => clearInterval(interval);
+  }, [selectedBattleId]);
+
+  // Fallback REST polling if WebSocket is offline
   useEffect(() => {
     if (wsConnected) return;
 
     const pollInterval = setInterval(async () => {
       try {
-        const [stateRes, decRes, battlesRes] = await Promise.all([
+        const [stateRes, decRes] = await Promise.all([
           fetch('/api/live/state'),
           fetch('/api/live/decision'),
-          fetch('/api/live/battles'),
         ]);
 
         if (stateRes.ok) {
@@ -208,80 +200,27 @@ export default function App() {
           const decData: DecisionSnapshot = await decRes.json();
           setDecision(decData);
         }
-        if (battlesRes.ok) {
-          const battlesData = await battlesRes.json();
-          if (Array.isArray(battlesData)) {
-            const items: BattleWatchlistItem[] = battlesData.map((b: any) => ({
-              battle_id: b.battle_id,
-              attacker: b.attacker,
-              defender: b.defender,
-              attacker_position: b.attacker_position,
-              defender_position: b.defender_position,
-              gap_seconds: b.gap_seconds,
-              gap_trend: 'STABLE',
-              closing_state: 'STABLE',
-              window_state: 'UNKNOWN',
-              model_available: true,
-              compliance_status: 'LEGAL',
-              priority_state: 'ACTIVE',
-            }));
-            setWatchlist(items);
-            if (!selectedBattleId && items.length > 0) {
-              setSelectedBattleId(items[0].battle_id);
-            }
-          }
-        }
       } catch (err) {
         console.warn('REST fallback poll failed:', err);
       }
     }, 1000);
 
     return () => clearInterval(pollInterval);
-  }, [wsConnected, selectedBattleId]);
+  }, [wsConnected]);
 
-  // Send control action via WebSocket or fallback REST
+  // Control Actions (WebSocket / REST)
   const sendControl = useCallback(
     (payload: Record<string, any>) => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify(payload));
       } else {
-        fetch('/api/replay/control', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch((err) => console.error('Control command failed:', err));
+        KyntraApiClient.sendRuntimeControl(payload as any).catch((err) =>
+          console.error('Control command failed:', err)
+        );
       }
     },
     []
   );
-
-  // Playback Control Handlers
-  const handlePlayPause = useCallback(() => {
-    setIsPaused((prev) => {
-      const nextState = !prev;
-      sendControl({ action: nextState ? 'pause' : 'resume' });
-      return nextState;
-    });
-  }, [sendControl]);
-
-  const handleSeekLap = useCallback(
-    (lap: number) => {
-      sendControl({ action: 'seek', lap });
-    },
-    [sendControl]
-  );
-
-  const handleSpeedChange = useCallback(
-    (speed: number) => {
-      setPlaybackSpeed(speed);
-      sendControl({ action: 'speed', speed });
-    },
-    [sendControl]
-  );
-
-  const handleStep = useCallback(() => {
-    sendControl({ action: 'step' });
-  }, [sendControl]);
 
   const handleSelectBattle = useCallback(
     (battleId: string) => {
@@ -291,44 +230,17 @@ export default function App() {
     [sendControl]
   );
 
-  const handleCloseInspector = useCallback(() => {
-    setInspectorTarget(null);
+  const handleOpenEvidence = useCallback(
+    (target: EvidenceInspectionTarget) => {
+      setEvidenceTarget(target);
+    },
+    []
+  );
+
+  const handleCloseEvidence = useCallback(() => {
+    setEvidenceTarget(null);
   }, []);
 
-  const handleOpenBattleWorkspace = useCallback(
-    (battleId: string) => {
-      handleSelectBattle(battleId);
-      setCurrentContext('BATTLE');
-    },
-    [handleSelectBattle]
-  );
-
-  const handleSelectCar = useCallback(
-    (driver: string) => {
-      const match = watchlist.find((w) => w.attacker === driver || w.defender === driver);
-      if (match) {
-        handleSelectBattle(match.battle_id);
-      } else {
-        setInspectorTarget({ type: 'CAR', carDriver: driver });
-      }
-    },
-    [watchlist, handleSelectBattle]
-  );
-
-  // Context Inspector Opener
-  const handleOpenInspector = useCallback(
-    (type: InspectorTarget['type'], payload?: any) => {
-      setInspectorTarget({
-        type,
-        carDriver: payload?.driver,
-        battleId: payload?.battleId || selectedBattleId || undefined,
-        eventItem: payload?.event,
-      });
-    },
-    [selectedBattleId]
-  );
-
-  // Event / Session Switch Handler
   const handleSelectEvent = useCallback(
     async (newEventId: string) => {
       setIsSessionLoading(true);
@@ -337,18 +249,12 @@ export default function App() {
       sendControl({ action: 'set_event', event_id: newEventId });
 
       try {
-        const [geoRes, markRes] = await Promise.all([
-          fetch(`/api/track/${newEventId}`),
-          fetch(`/api/events/markers?race_id=${newEventId}`),
+        const [geo, mark] = await Promise.all([
+          KyntraApiClient.getTrackGeometry(newEventId),
+          KyntraApiClient.getTimelineMarkers(newEventId),
         ]);
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          setTrackGeometry(geoData);
-        }
-        if (markRes.ok) {
-          const markData = await markRes.json();
-          setTimelineMarkers(markData);
-        }
+        if (geo) setTrackGeometry(geo);
+        if (mark) setTimelineMarkers(mark);
       } catch (err) {
         console.error('Session switch assets failed:', err);
       } finally {
@@ -359,7 +265,7 @@ export default function App() {
     [sendControl]
   );
 
-  // Global Keyboard Operations Listener
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -374,34 +280,27 @@ export default function App() {
 
       if (e.code === 'Space') {
         e.preventDefault();
-        handlePlayPause();
-      } else if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
+        sendControl({ action: 'pause' });
+      } else if (e.code === 'ArrowRight') {
         e.preventDefault();
-        handleStep();
+        sendControl({ action: 'step' });
       } else if (e.code === 'Escape') {
-        if (inspectorTarget) {
-          setInspectorTarget(null);
+        if (evidenceTarget) {
+          setEvidenceTarget(null);
         } else if (sessionSwitcherOpen) {
           setSessionSwitcherOpen(false);
         } else if (shortcutsOpen) {
           setShortcutsOpen(false);
         }
       } else if (e.key === '1') {
-        setCurrentMode('LIVE');
         setCurrentContext('RACE');
       } else if (e.key === '2') {
-        setCurrentMode('REPLAY');
-        setCurrentContext('RACE');
-      } else if (e.key === '3') {
-        setCurrentMode('FORECAST');
-        setCurrentContext('RACE');
-      } else if (e.key === '4') {
-        setCurrentContext('BATTLE');
-      } else if (e.key === '5') {
         setCurrentContext('STRATEGY');
-      } else if (e.key === '6') {
-        setCurrentContext('EVENTS');
-      } else if (e.key === '7') {
+      } else if (e.key === '3') {
+        setCurrentContext('REPLAY');
+      } else if (e.key === '4') {
+        setCurrentContext('ANALYSIS');
+      } else if (e.key === '5') {
         setCurrentContext('SYSTEM');
       } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         setShortcutsOpen((prev) => !prev);
@@ -411,192 +310,113 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-    handlePlayPause,
-    handleStep,
-    inspectorTarget,
+    evidenceTarget,
     sessionSwitcherOpen,
     shortcutsOpen,
+    sendControl,
   ]);
 
   return (
-    <div className="app-pitwall-shell">
-      {/* 1. Official Header Bar */}
-      <Header
-        currentMode={currentMode}
-        onSelectMode={(mode) => {
-          setCurrentMode(mode);
-          setCurrentContext('RACE');
-        }}
-        layoutPreset={layoutPreset}
-        onSelectLayoutPreset={(preset) => setLayoutPreset(preset)}
-        currentContext={currentContext}
-        onSelectContext={(ctx) => setCurrentContext(ctx)}
-        raceState={raceState}
-        wsConnected={wsConnected}
-        onOpenSessionSwitcher={() => setSessionSwitcherOpen(true)}
-        onOpenInspector={(type) => handleOpenInspector(type)}
-        onOpenSystem={() => setCurrentContext('SYSTEM')}
-        onToggleShortcuts={() => setShortcutsOpen((prev) => !prev)}
-      />
-
-      {/* 2. Primary Workstation Viewport with In-Place Rail Context Inspector */}
-      <div className="workstation-viewport-wrapper">
-        <main className="workspace-main-viewport">
-          {currentContext === 'SYSTEM' ? (
-            <SystemWorkspace
-              systemStatus={systemStatus}
-              wsConnected={wsConnected}
-              totalEventsCount={recentEvents.length}
-            />
-          ) : currentContext === 'BATTLE' ? (
-            <BattleWorkspace
-              geometry={trackGeometry}
-              cars={raceState?.cars || {}}
-              decision={decision}
-              watchlist={watchlist}
-              activeWindows={activeWindows}
-              selectedBattleId={selectedBattleId}
-              recentEvents={recentEvents}
-              trackStatus={raceState?.track.track_status || '1'}
-              circuitName={trackGeometry?.circuit_name || 'Autodromo Nazionale Monza'}
-              onSelectBattle={handleSelectBattle}
-              onSelectCar={handleSelectCar}
-              onJumpToLap={handleSeekLap}
-              onOpenModelModal={() => handleOpenInspector('MODEL')}
-            />
-          ) : currentContext === 'STRATEGY' ? (
-            <StrategyWorkspace
-              decision={decision}
-              onOpenModelModal={() => handleOpenInspector('MODEL')}
-              onOpenEnergyModal={() => handleOpenInspector('ENERGY')}
-            />
-          ) : currentContext === 'EVENTS' ? (
-            <EventsWorkspace
-              events={recentEvents}
-              onJumpToLap={handleSeekLap}
-            />
-          ) : currentMode === 'REPLAY' ? (
-            <ReplayWorkspace
-              geometry={trackGeometry}
-              cars={raceState?.cars || {}}
-              decision={decision}
-              watchlist={watchlist}
-              activeWindows={activeWindows}
-              selectedBattleId={selectedBattleId}
-              recentEvents={recentEvents}
-              timelineMarkers={timelineMarkers}
-              trackStatus={raceState?.track.track_status || '1'}
-              circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
-              currentLap={raceState?.session.current_lap ?? 0}
-              totalLaps={raceState?.session.total_laps ?? 0}
-              inspectorTarget={inspectorTarget}
-              onSelectBattle={handleSelectBattle}
-              onSelectCar={handleSelectCar}
-              onJumpToLap={handleSeekLap}
-              onOpenInspector={handleOpenInspector}
-              onCloseInspector={handleCloseInspector}
-              onOpenBattleWorkspace={handleOpenBattleWorkspace}
-            />
-          ) : currentMode === 'FORECAST' ? (
-            <ForecastWorkspace
-              decision={decision}
-              watchlist={watchlist}
-              currentLap={raceState?.session.current_lap ?? 0}
-              circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
-              eventId={eventId}
-              onSelectBattle={handleSelectBattle}
-            />
-          ) : layoutPreset === 'ANALYSIS' ? (
-            <AnalysisWorkspace
-              geometry={trackGeometry}
-              cars={raceState?.cars || {}}
-              decision={decision}
-              watchlist={watchlist}
-              activeWindows={activeWindows}
-              selectedBattleId={selectedBattleId}
-              recentEvents={recentEvents}
-              trackStatus={raceState?.track.track_status || '1'}
-              circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
-              inspectorTarget={inspectorTarget}
-              onSelectBattle={handleSelectBattle}
-              onSelectCar={handleSelectCar}
-              onJumpToLap={handleSeekLap}
-              onOpenInspector={handleOpenInspector}
-              onCloseInspector={handleCloseInspector}
-            />
-          ) : layoutPreset === 'DEMO' ? (
-            <DemoWorkspace
-              geometry={trackGeometry}
-              cars={raceState?.cars || {}}
-              decision={decision}
-              watchlist={watchlist}
-              activeWindows={activeWindows}
-              selectedBattleId={selectedBattleId}
-              trackStatus={raceState?.track.track_status || '1'}
-              circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
-              inspectorTarget={inspectorTarget}
-              onSelectBattle={handleSelectBattle}
-              onSelectCar={handleSelectCar}
-              onJumpToLap={handleSeekLap}
-              onOpenInspector={handleOpenInspector}
-              onCloseInspector={handleCloseInspector}
-            />
-          ) : (
-            /* Default: PIT_WALL preset */
-            <LiveWorkspace
-              geometry={trackGeometry}
-              cars={raceState?.cars || {}}
-              decision={decision}
-              watchlist={watchlist}
-              activeWindows={activeWindows}
-              selectedBattleId={selectedBattleId}
-              recentEvents={recentEvents}
-              trackStatus={raceState?.track.track_status || '1'}
-              circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
-              inspectorTarget={inspectorTarget}
-              onSelectBattle={handleSelectBattle}
-              onSelectCar={handleSelectCar}
-              onJumpToLap={handleSeekLap}
-              onOpenInspector={handleOpenInspector}
-              onCloseInspector={handleCloseInspector}
-              onOpenBattleWorkspace={handleOpenBattleWorkspace}
-            />
-          )}
-        </main>
-
-        {/* Floating Context Inspector for Secondary Workspaces (Live and Replay have In-Rail Inspectors) */}
-        {inspectorTarget && currentContext !== 'RACE' && (
-          <ContextInspector
-            target={inspectorTarget}
-            onClose={() => setInspectorTarget(null)}
-            decision={decision}
-            cars={raceState?.cars || {}}
-            watchlist={watchlist}
-            onSelectBattle={handleSelectBattle}
-            onJumpToLap={handleSeekLap}
-          />
-        )}
-      </div>
-
-      {/* 3. Sticky Local Bottom Rail: Replay & Session Controls (Rendered on LIVE and contextual views) */}
-      {currentMode !== 'REPLAY' && (
-        <footer className="pitwall-bottom-rail">
-          <TimelineScrubber
-            currentLap={raceState?.session.current_lap ?? 0}
-            totalLaps={raceState?.session.total_laps ?? 0}
-            sessionTime={raceState?.session.session_time || raceState?.timestamp}
-            isPaused={isPaused}
-            playbackSpeed={playbackSpeed}
-            onPlayPause={handlePlayPause}
-            onSeekLap={handleSeekLap}
-            onSpeedChange={handleSpeedChange}
-            onStep={handleStep}
-            markers={timelineMarkers}
-          />
-        </footer>
+    <AppShell
+      currentContext={currentContext}
+      onSelectContext={setCurrentContext}
+      runtimeSnapshot={runtimeSnapshot}
+      raceState={raceState}
+      isStreaming={wsConnected}
+      evidenceTarget={evidenceTarget}
+      onCloseEvidence={handleCloseEvidence}
+      onOpenSessionSwitcher={() => setSessionSwitcherOpen(true)}
+      onOpenShortcuts={() => setShortcutsOpen(true)}
+    >
+      {/* Dynamic Viewport Content */}
+      {currentContext === 'RACE' ? (
+        <RaceWorkspace
+          runtimeSnapshot={runtimeSnapshot}
+          decision={decision}
+          cars={raceState?.cars || {}}
+          geometry={trackGeometry}
+          watchlist={watchlist}
+          activeBattles={activeBattles}
+          selectedBattleId={selectedBattleId}
+          decisionHistory={decisionHistory}
+          trackStatus={raceState?.track.track_status || '1'}
+          circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || 'Monza'}
+          onSelectBattle={handleSelectBattle}
+          onSelectCar={(drv) => {
+            const match = watchlist.find((w) => w.attacker === drv || w.defender === drv);
+            if (match) handleSelectBattle(match.battle_id);
+          }}
+          onOpenEvidence={handleOpenEvidence}
+        />
+      ) : currentContext === 'STRATEGY' ? (
+        <StrategyWorkspace
+          decision={decision}
+          onOpenEvidence={handleOpenEvidence}
+        />
+      ) : currentContext === 'REPLAY' ? (
+        <ReplayWorkspace
+          geometry={trackGeometry}
+          cars={raceState?.cars || {}}
+          decision={decision}
+          watchlist={watchlist}
+          activeWindows={activeWindows}
+          selectedBattleId={selectedBattleId}
+          recentEvents={recentEvents}
+          timelineMarkers={timelineMarkers}
+          trackStatus={raceState?.track.track_status || '1'}
+          circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
+          currentLap={runtimeSnapshot?.current_lap ?? raceState?.session.current_lap ?? 0}
+          totalLaps={raceState?.session.total_laps ?? 53}
+          inspectorTarget={null}
+          onSelectBattle={handleSelectBattle}
+          onSelectCar={() => {}}
+          onJumpToLap={(lap) => sendControl({ action: 'seek', lap })}
+          onOpenInspector={(type) => {
+            handleOpenEvidence({
+              title: `Inspector: ${type}`,
+              value: 'INSPECT',
+              status: 'INFO',
+              provenance: 'LIVE',
+            });
+          }}
+          onCloseInspector={handleCloseEvidence}
+          onOpenBattleWorkspace={handleSelectBattle}
+        />
+      ) : currentContext === 'ANALYSIS' ? (
+        <AnalysisWorkspace
+          geometry={trackGeometry}
+          cars={raceState?.cars || {}}
+          decision={decision}
+          watchlist={watchlist}
+          activeWindows={activeWindows}
+          selectedBattleId={selectedBattleId}
+          recentEvents={recentEvents}
+          trackStatus={raceState?.track.track_status || '1'}
+          circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || '—'}
+          inspectorTarget={null}
+          onSelectBattle={handleSelectBattle}
+          onSelectCar={() => {}}
+          onJumpToLap={(lap) => sendControl({ action: 'seek', lap })}
+          onOpenInspector={(type) => {
+            handleOpenEvidence({
+              title: `Analysis Target: ${type}`,
+              value: 'ANALYSIS',
+              status: 'INFO',
+              provenance: 'DERIVED',
+            });
+          }}
+          onCloseInspector={handleCloseEvidence}
+        />
+      ) : (
+        /* SYSTEM Workspace */
+        <SystemWorkspace
+          systemStatus={systemStatus}
+          wsConnected={wsConnected}
+          totalEventsCount={recentEvents.length}
+        />
       )}
 
-      {/* 4. Session Switcher Dialog */}
+      {/* Session Switcher Dialog */}
       <SessionSwitcher
         isOpen={sessionSwitcherOpen}
         onClose={() => setSessionSwitcherOpen(false)}
@@ -605,7 +425,7 @@ export default function App() {
         isLoading={isSessionLoading}
       />
 
-      {/* 5. Keyboard Shortcuts Help Modal */}
+      {/* Keyboard Shortcuts Dialog */}
       {shortcutsOpen && (
         <div className="modal-backdrop" onClick={() => setShortcutsOpen(false)}>
           <div className="modal-dialog shortcuts-dialog" onClick={(e) => e.stopPropagation()}>
@@ -623,51 +443,43 @@ export default function App() {
               </button>
             </div>
             <div className="modal-body">
-              <table className="shortcuts-table">
+              <table className="shortcuts-table mono">
                 <tbody>
                   <tr>
-                    <td><kbd className="mono">SPACE</kbd></td>
+                    <td><kbd>SPACE</kbd></td>
                     <td>Play / Pause sequential replay stream</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">&larr;</kbd> / <kbd className="mono">&rarr;</kbd></td>
-                    <td>Step replay forward / backward 1 frame</td>
+                    <td><kbd>&rarr;</kbd></td>
+                    <td>Step replay forward 1 cycle</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">1</kbd></td>
-                    <td>Switch to LIVE Operating Mode</td>
+                    <td><kbd>1</kbd></td>
+                    <td>RACE Command Center Workspace</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">2</kbd></td>
-                    <td>Switch to REPLAY Mode</td>
+                    <td><kbd>2</kbd></td>
+                    <td>STRATEGY Verification Workspace</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">3</kbd></td>
-                    <td>Switch to FORECAST Mode</td>
+                    <td><kbd>3</kbd></td>
+                    <td>REPLAY Playback Workspace</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">4</kbd></td>
-                    <td>Switch to BATTLE Investigation Workspace</td>
+                    <td><kbd>4</kbd></td>
+                    <td>ANALYSIS Offline Workspace</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">5</kbd></td>
-                    <td>Switch to STRATEGY Verification Workspace</td>
+                    <td><kbd>5</kbd></td>
+                    <td>SYSTEM &amp; Tech Stack Diagnostics</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">6</kbd></td>
-                    <td>Switch to EVENTS Race Memory Workspace</td>
+                    <td><kbd>ESC</kbd></td>
+                    <td>Close active Evidence Drawer or modal</td>
                   </tr>
                   <tr>
-                    <td><kbd className="mono">7</kbd></td>
-                    <td>Switch to SYSTEM Provenance Workspace</td>
-                  </tr>
-                  <tr>
-                    <td><kbd className="mono">ESC</kbd></td>
-                    <td>Close active Context Inspector / Modal</td>
-                  </tr>
-                  <tr>
-                    <td><kbd className="mono">?</kbd></td>
-                    <td>Toggle this operational shortcut reference</td>
+                    <td><kbd>?</kbd></td>
+                    <td>Toggle operational keyboard shortcut reference</td>
                   </tr>
                 </tbody>
               </table>
@@ -675,6 +487,6 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

@@ -22,6 +22,7 @@ export const SystemWorkspace: React.FC<SystemWorkspaceProps> = ({
     { id: 'FIA', label: 'FIA REGULATIONS' },
     { id: 'PROVIDERS', label: 'DATA PROVIDERS' },
     { id: 'LIMITATIONS', label: 'KNOWN LIMITATIONS' },
+    { id: 'TECH_STACK', label: 'TECH STACK' },
   ];
 
   return (
@@ -376,6 +377,85 @@ export const SystemWorkspace: React.FC<SystemWorkspaceProps> = ({
                   proprietary private team telemetry channels. KYNTRA labels all energy calculations strictly as SIMULATED.
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 8: TECH STACK */}
+        {activeTab === 'TECH_STACK' && (
+          <div className="sys-pane-section">
+            <h3 className="section-heading">VERIFIED PRODUCTION TECHNOLOGY STACK</h3>
+            <p className="section-desc">
+              All listed technologies, packages, and protocol layers are actively integrated and verified in the repository.
+            </p>
+
+            <div className="detail-table-card">
+              <table className="standard-table mono">
+                <thead>
+                  <tr>
+                    <th>LAYER</th>
+                    <th>TECHNOLOGY</th>
+                    <th>VERSION / SPEC</th>
+                    <th>ROLE &amp; FUNCTION IN PLATFORM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="font-bold text-accent">Frontend Core</td>
+                    <td>React + TypeScript</td>
+                    <td>React 19.2, TS 6.0</td>
+                    <td>High-density pit-wall workstation user interface</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Frontend Bundler</td>
+                    <td>Vite</td>
+                    <td>Vite 8.2 (ESM)</td>
+                    <td>Instant hot module replacement &amp; production asset compiling</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Styling Architecture</td>
+                    <td>Vanilla CSS / Tokens</td>
+                    <td>CSS Variables + Grid</td>
+                    <td>Strict zero-page-scrolling desktop motorsport ops design system</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Backend Core</td>
+                    <td>Python + FastAPI</td>
+                    <td>Python 3.12, FastAPI 0.115+</td>
+                    <td>Asynchronous REST API, WebSocket streams, pipeline orchestration</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Validation &amp; Schema</td>
+                    <td>Pydantic v2</td>
+                    <td>Pydantic 2.10</td>
+                    <td>Strict type-safe contracts for DecisionSnapshot &amp; KyntraRuntimeSnapshot</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Machine Learning</td>
+                    <td>LightGBM + NumPy + Joblib</td>
+                    <td>LightGBM 4.5.0</td>
+                    <td>Frozen cumulative horizon overtakes (P1/P2/P3) + PAV monotonicity</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Streaming Protocol</td>
+                    <td>WebSocket (WS /api/live)</td>
+                    <td>RFC 6455</td>
+                    <td>Real-time bi-directional telemetry broadcast to pit-wall client</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Decision Durability</td>
+                    <td>SQLite WAL Mode</td>
+                    <td>SQLite 3 (PRAGMA WAL)</td>
+                    <td>Append-only atomic persistence surviving process restarts</td>
+                  </tr>
+                  <tr>
+                    <td className="font-bold text-accent">Telemetry Ingestion</td>
+                    <td>OpenF1 + FastF1 Adapters</td>
+                    <td>OpenF1 Live / Parquet</td>
+                    <td>Real-time F1 timing ingestion and replay provider caches</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         )}

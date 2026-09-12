@@ -1,0 +1,61 @@
+/* ==========================================================================
+   KYNTRA MOTORSPORT OPERATIONS DESIGN SYSTEM (TOKENS)
+   Formula 1 Pit-Wall + Bloomberg Terminal + Aerospace Mission Control
+   ========================================================================== */
+
+:root {
+  /* Surface / Background Hierarchy */
+  --bg-root: #07090C;
+  --bg-panel: #0B0E12;
+  --bg-elevated: #10141A;
+  --bg-active: #151A21;
+  --bg-card: #0E1218;
+  --bg-card-hover: #141922;
+  --bg-inset: #050709;
+
+  /* Operational Borders */
+  --border-subtle: #222832;
+  --border-strong: #343C48;
+  --border-active: #485466;
+  --border-accent: #38bdf8;
+
+  /* Typography / Text Palette */
+  --text-primary: #F4F6F8;
+  --text-secondary: #AAB2BF;
+  --text-muted: #707988;
+  --text-inverse: #07090C;
+
+  /* Restrained Functional Accents */
+  --accent-model: #38bdf8;       /* cyan / blue: frozen model & ML inference */
+  --accent-model-dim: rgba(56, 189, 248, 0.12);
+  --status-valid: #10b981;       /* green: legal / permitted / valid call */
+  --status-valid-dim: rgba(16, 185, 129, 0.12);
+  --status-caution: #f59e0b;     /* amber: aging / caution / energy sensitivity */
+  --status-caution-dim: rgba(245, 158, 11, 0.12);
+  --status-blocked: #ef4444;     /* red: blocked / high risk / rule violation */
+  --status-blocked-dim: rgba(239, 68, 68, 0.12);
+  --status-neutral: #64748b;     /* gray: unknown / unavailable / withheld */
+  --status-neutral-dim: rgba(100, 116, 139, 0.12);
+
+  /* Typography Scale */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Layout Spacing Constants */
+  --header-height: 42px;
+  --left-rail-width: 64px;
+  --bottom-bar-height: 38px;
+  --inspector-width: 440px;
+}
+
+/* Tabular Numerals and Dense Motorsport Utilities */
+.mono-num {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+.text-model { color: var(--accent-model); }
+.text-valid { color: var(--status-valid); }
+.text-caution { color: var(--status-caution); }
+.text-blocked { color: var(--status-blocked); }
+.text-neutral { color: var(--status-neutral); }
