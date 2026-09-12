@@ -19,6 +19,7 @@ from kyntra.processing.replay_loader import (
     load_demo_replay,
 )
 from kyntra.schemas import DecisionSnapshot
+from kyntra.strategy import StrategyMatrixSnapshot, generate_strategy_matrix
 
 router = APIRouter(prefix="/api", tags=["KYNTRA Intelligence"])
 
@@ -165,6 +166,79 @@ def evaluate_custom_decision(req: DecisionRequest) -> DecisionSnapshot:
     }
 
     return compute_decision(
+        race_data=race_data,
+        battle_data=battle_data,
+        simulated_energy_state=energy_data,
+    )
+
+
+@router.get("/strategy/matrix/current", response_model=StrategyMatrixSnapshot)
+def get_current_strategy_matrix() -> StrategyMatrixSnapshot:
+    """Convenience alias: retrieve the active/current canonical Strategist Matrix."""
+    return get_strategy_matrix_for_lap(event_id="2026_01_AUS", lap=18, attacker="NOR", defender="VER")
+
+
+@router.get("/strategy/matrix/{event_id}/{lap}", response_model=StrategyMatrixSnapshot)
+def get_strategy_matrix_for_lap(
+    event_id: str,
+    lap: int,
+    attacker: Optional[str] = None,
+    defender: Optional[str] = None,
+) -> StrategyMatrixSnapshot:
+    """Retrieve canonical Strategist Matrix for a replay event at a given lap."""
+    if event_id not in EVENT_INFO:
+        raise HTTPException(status_code=404, detail=f"Event '{event_id}' not found.")
+
+    state = extract_lap_battle_state(
+        event_id=event_id,
+        lap=lap,
+        attacker_code=attacker,
+        defender_code=defender,
+    )
+    return generate_strategy_matrix(
+        race_data=state["race_data"],
+        battle_data=state["battle_data"],
+        simulated_energy_state=state["energy_data"],
+    )
+
+
+@router.get("/strategy/matrix/{event_id}/{lap}/{attacker}/{defender}", response_model=StrategyMatrixSnapshot)
+def get_strategy_matrix_for_battle(
+    event_id: str,
+    lap: int,
+    attacker: str,
+    defender: str,
+) -> StrategyMatrixSnapshot:
+    """Retrieve canonical Strategist Matrix for an explicit battle pair."""
+    return get_strategy_matrix_for_lap(event_id=event_id, lap=lap, attacker=attacker, defender=defender)
+
+
+@router.post("/strategy/matrix", response_model=StrategyMatrixSnapshot)
+def evaluate_custom_strategy_matrix(req: DecisionRequest) -> StrategyMatrixSnapshot:
+    """Evaluate canonical Strategist Matrix on custom battle parameters."""
+    race_data = {
+        "event_id": req.event_id,
+        "event_name": EVENT_INFO.get(req.event_id or "", {}).get("event_name", "Custom Grand Prix"),
+        "lap": req.lap,
+        "attacker": req.attacker,
+        "defender": req.defender,
+        "track_status": req.track_status,
+        "mode": "FORECAST",
+        "source_mode": "SYNTHETIC",
+    }
+    battle_data = {
+        "gap_seconds": req.gap_seconds,
+        "closing_rate": req.closing_rate,
+        "recent_pace_delta_1lap": req.recent_pace_delta_1lap,
+        "recent_pace_delta_3laps": req.recent_pace_delta_3laps,
+        "speed_trap_delta": req.speed_trap_delta,
+        "tyre_age_delta": req.tyre_age_delta,
+        "rear_threat": req.rear_threat,
+    }
+    energy_data = {
+        "available_energy_mj": req.available_energy_mj,
+    }
+    return generate_strategy_matrix(
         race_data=race_data,
         battle_data=battle_data,
         simulated_energy_state=energy_data,

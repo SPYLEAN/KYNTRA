@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from kyntra.models.registry import get_overtake_model
 from kyntra.stability import evaluate_stability as run_stability_evaluation
+from kyntra.strategy.matrix import generate_strategy_matrix
 from kyntra.schemas import (
     BattleStateSnapshot,
     ComplianceSnapshot,
@@ -313,6 +314,13 @@ def compute_decision(
         feed_provider=race_data.get("provider", "REPLAY_ENGINE"),
     )
 
+    # 9. Strategist Matrix (CAN I CHOOSE?) — 4 counterfactual actions from fair baseline
+    matrix_snap = generate_strategy_matrix(
+        race_data=race_data,
+        battle_data=battle_data,
+        simulated_energy_state=simulated_energy_state,
+    )
+
     return DecisionSnapshot(
         race=race,
         provenance=provenance,
@@ -323,4 +331,5 @@ def compute_decision(
         compliance=compliance,
         counterfactuals=cf_actions,
         recommendation=recommendation,
+        strategy_matrix=matrix_snap.model_dump(),
     )

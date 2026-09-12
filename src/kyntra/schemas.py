@@ -208,6 +208,7 @@ class DecisionSnapshot(BaseModel):
     compliance: ComplianceSnapshot
     counterfactuals: List[CounterfactualActionSnapshot]
     recommendation: RecommendationSnapshot
+    strategy_matrix: Optional[Dict[str, Any]] = None
 
 
 # ==============================================================================
