@@ -6594,7 +6594,7 @@ html, body, #root {
 
 .race-permanent-layout {
   display: grid;
-  grid-template-columns: 18% 54% 28%;
+  grid-template-columns: minmax(230px, 18%) minmax(500px, 54%) minmax(340px, 28%);
   height: calc(100vh - 42px);
   max-height: calc(100vh - 42px);
   gap: 8px;
@@ -6602,6 +6602,45 @@ html, body, #root {
   background-color: var(--bg-root);
   overflow: hidden;
   box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+  .race-permanent-layout {
+    grid-template-columns: minmax(210px, 19%) minmax(440px, 51%) minmax(320px, 30%);
+    gap: 6px;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 1366px), (max-height: 800px) {
+  /* At 1366×768: Responsive minmax behavior protecting primary information sizes */
+  .race-permanent-layout {
+    grid-template-columns: minmax(200px, 19%) minmax(400px, 51%) minmax(300px, 30%);
+    gap: 6px;
+    padding: 4px 6px;
+  }
+
+  /* Collapse secondary metadata before reducing critical typography */
+  .meta-provenance,
+  .count-badge,
+  .timing-meta-secondary,
+  .stat-sub.text-muted:not(.mono-num) {
+    display: none;
+  }
+
+  /* Protect primary information font sizes */
+  .kyntra-call-card-redesign .call-headline {
+    font-size: 20px !important;
+    line-height: 1.2;
+  }
+
+  .horizon-prob-card .card-prob-num {
+    font-size: 26px !important;
+  }
+
+  .stat-num-line .stat-num {
+    font-size: 16px !important;
+  }
 }
 
 /* Connection Status and Stale Telemetry Badges */

@@ -160,3 +160,22 @@ def test_overtake_legality_not_eligible_at_detection(fia_config):
     res = check_overtake_legality(fia_config, state)
     assert res.is_compliant is False
     assert res.reason == ComplianceReason.NOT_ELIGIBLE_AT_DETECTION
+
+
+def test_unknown_compliance_never_allowed_regression(fia_config):
+    """Regression test: UNKNOWN compliance status must never be compliant or treated as ALLOWED."""
+    # State with unknown telemetry source and unverified eligibility
+    state_unknown = EnergyState(
+        timestamp=timedelta(seconds=100),
+        lap=10,
+        sector=1,
+        energy_available_mj=2.5,
+        energy_window_fraction=0.625,
+        overtake_eligible=None,
+        source=TelemetrySource.UNKNOWN,
+    )
+    res = check_overtake_legality(fia_config, state_unknown)
+    assert res.is_compliant is False
+    assert res.reason != ComplianceReason.ALLOWED
+    assert res.reason in (ComplianceReason.ENERGY_STATE_UNKNOWN, ComplianceReason.REGULATION_CONFIG_INCOMPLETE)
+

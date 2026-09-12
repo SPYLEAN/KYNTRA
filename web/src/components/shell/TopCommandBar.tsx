@@ -117,6 +117,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             <span className="ctx-label text-muted">CIRCUIT:</span>
             <span className="ctx-val font-bold text-primary">{circuitName}</span>
             <span className="ctx-sub text-muted">[{eventId}]</span>
+            <span className="ctx-sub text-secondary font-bold" title="Canonical Data Source Provenance">[{sourceMode === 'HISTORICAL_REPLAY' ? 'HISTORICAL REPLAY' : sourceMode === 'LIVE_FEED' ? 'LIVE FEED' : sourceMode}]</span>
             <span className="ctx-caret">&#9662;</span>
           </div>
 
@@ -147,17 +148,26 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <span className="c-val font-bold">{connectionStatus}</span>
         </div>
 
-        {/* Stale Alert or Latency */}
-        {isStale ? (
-          <div className="telemetry-compact-item item-stale-alert" title="Telemetry stream paused or delayed > 4s">
-            <span className="c-val font-bold text-stale">DATA STALE</span>
+        {/* Freshness State / Stale Alert */}
+        {isStale && (
+          <div className="telemetry-compact-item item-stale-alert" title="Telemetry stream paused or delayed > 4.0s">
+            <span className="c-val font-bold text-stale">DATA STALE (&gt;4s)</span>
           </div>
-        ) : (
-          <div className="telemetry-compact-item item-freshness" title="Telemetry round-trip latency & data age">
-            <span className="c-lbl text-muted">LAT:</span>
-            <span className="c-val mono-num font-bold text-secondary">
-              {rawLatencyMs != null ? `${rawLatencyMs}ms` : dataAge ? `${dataAge}s` : '—'}
-            </span>
+        )}
+
+        {/* Explicit Latency Label: API RTT */}
+        <div className="telemetry-compact-item item-rtt" title="Client-to-backend API Round-Trip Time (RTT)">
+          <span className="c-lbl text-muted">API RTT:</span>
+          <span className="c-val mono-num font-bold text-secondary">
+            {rawLatencyMs != null ? `${rawLatencyMs}ms` : '—'}
+          </span>
+        </div>
+
+        {/* Explicit Freshness Label: DATA AGE */}
+        {dataAge != null && (
+          <div className="telemetry-compact-item item-freshness" title="Telemetry data age from source stream">
+            <span className="c-lbl text-muted">DATA AGE:</span>
+            <span className="c-val mono-num font-bold text-secondary">{dataAge}s</span>
           </div>
         )}
 
@@ -174,7 +184,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {/* Live Stream Transport Indicator */}
         <div
           className={`stream-badge font-bold ${transportType === 'WS_STREAM' ? 'stream-live' : 'stream-polling'} ${isStale ? 'stream-stale' : ''}`}
-          title={transportType === 'WS_STREAM' ? 'Bidirectional WebSocket Streaming' : 'Polling REST Fallback Active'}
+          title={transportType === 'WS_STREAM' ? 'Transport: Bidirectional WebSocket Streaming' : 'Transport: HTTP Polling Fallback Active'}
         >
           <span className="stream-dot" />
           <span>{transportType === 'WS_STREAM' ? 'WS STREAM' : 'HTTP POLL'}</span>

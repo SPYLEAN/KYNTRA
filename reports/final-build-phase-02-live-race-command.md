@@ -92,7 +92,7 @@ The layout strictly satisfies the workstation specifications:
 
 - **`?`**: Opens the Operational Command Shortcuts dialog detailing keyboard mapping.
 - **`E`**: Opens the Forensic Evidence Inspector Drawer showing full snapshot metadata, calculation method (`7-Point Atomic Final Publication Gate V1`), model version (`overtake_p123_v1.lgb`), snapshot ID, and reason codes.
-- **`1` – `5`**: Rapid context switching between Workspaces (`1: RACE`, `2: STRATEGY`, `3: REPLAY`, `4: ANALYSIS`, `5: SYSTEM`).
+- **`1` – `5`**: Rapid context switching between Workspaces (`1: RACE`, `2: STRATEGY`, `3: EVENTS`, `4: ANALYSIS`, `5: SYSTEM`). Note: `REPLAY` is an operating mode, not a workspace.
 - **`Space`**: Pause / Resume live replay stream.
 - **`Esc`**: Dismiss open modal or evidence inspection drawer.
 
@@ -103,7 +103,7 @@ The layout strictly satisfies the workstation specifications:
 - **Model Bundle**: `models/kyntra_overtake_bundle_v1.joblib`
 - **Expected SHA-256**: `a368b02089c65e6043c04a2f4d132ccaacfd644c545e4d7958e49420e50b3ad5`
 - **Verified SHA-256**: `A368B02089C65E6043C04A2F4D132CCAACFD644C545E4D7958E49420E50B3AD5` (Exact match, zero modification).
-- **Backend Test Regression**: 246 passed across unit, integration, and benchmark suites.
+- **Backend Test Regression**: 247 passed across unit, integration, compliance, and benchmark suites.
 
 ---
 
@@ -121,6 +121,50 @@ The layout strictly satisfies the workstation specifications:
   `file:///C:/Users/tanvi/.gemini/antigravity-ide/brain/27428b79-571a-435e-9698-d352c3771579/workstation_1440x900_1789244161824.png`
 - **1366 × 768 Workstation**:
   `file:///C:/Users/tanvi/.gemini/antigravity-ide/brain/27428b79-571a-435e-9698-d352c3771579/workstation_1366x768_1789244197520.png`
+
+---
+
+## 10. Human Review Corrections Applied (Audit & Verification)
+
+1. **Permanent Workspace Taxonomy**:
+   - Workspaces strictly restored to: `RACE / STRATEGY / EVENTS / ANALYSIS / SYSTEM`.
+   - Keyboard shortcut `3` updated from `REPLAY` to `EVENTS` (`EVENTS Chronology & Incident Log`).
+   - `REPLAY` preserved strictly as an operating mode alongside `LIVE` and `FORECAST`.
+2. **Energy Terminology Audit**:
+   - Replaced all inaccurate "measured battery SOC" references with `SIMULATED ENERGY STATE` and `SIMULATED — REGULATION CONSTRAINED`.
+   - Replaced ambiguous 4.0 MJ "battery capacity" or "deployment cap" references with `USABLE SOC WINDOW / 4.00 MJ REGULATION WINDOW`.
+3. **High-Resolution Request Timing**:
+   - Renamed all "sub-millisecond execution" claims across backend middleware docstrings and frontend headers to "high-resolution request timing / request diagnostics" (`time.perf_counter()`).
+4. **Canonical Concepts Disentanglement**:
+   - Explicitly separated:
+     - **Operating Mode**: `LIVE` / `FORECAST` / `REPLAY`.
+     - **Source Provenance**: Canonical `[HISTORICAL REPLAY]` / `[LIVE FEED]` tags.
+     - **Transport**: `WS STREAM` vs `HTTP POLL`.
+     - **Freshness**: Explicit `DATA STALE (>4s)` and `DATA AGE: <x>s`.
+     - **Latency**: Explicit `API RTT: <x>ms`.
+5. **Dynamic WebSocket Origin**:
+   - Eliminated hardcoded `ws://localhost:8000` client connection logic.
+   - Built relative URL resolver using `VITE_WS_URL` or dynamic `window.location` host (`${protocol}//${window.location.host}/api/live`), ensuring seamless Vite proxying and multi-environment production deployment.
+6. **Rule State & Compliance Audit**:
+   - Audited every `LEGAL` / `ALLOWED` UI indicator to verify derivation strictly from canonical `RuleState`.
+   - Guaranteed that `UNKNOWN` compliance status can NEVER render as `LEGAL` or `ALLOWED` (renders as neutral `UNKNOWN`).
+   - Added backend regression test `test_unknown_compliance_never_allowed_regression` in `tests/test_compliance.py`.
+7. **Explicit Metric Labels**:
+   - Replaced ambiguous "LAT" indicators across top command bar, timing cards, and footer with explicit semantic labels (`API RTT`, `DATA AGE`, `MESSAGE AGE`).
+8. **1366 × 768 Responsive Minmax & Visual Hierarchy**:
+   - Protected primary information sizing (headline `20px`, probability `26px`, critical metrics `16px`).
+   - Adopted CSS Grid `minmax(230px, 18%) minmax(500px, 54%) minmax(340px, 28%)` layout.
+   - Collapsed secondary badges/metadata at 1366×768 before reducing critical typography, maintaining zero vertical page scroll (`window.scrollY === 0`).
+9. **Interactive Evidence Inspector**:
+   - Evidence Drawer is now directly clickable from relevant workstation data cards (`SIMULATED ENERGY STATE`, `ACTIVE BATTLE`, `RULE ELIGIBILITY`, `STABILITY RISK`) in addition to keyboard shortcut `E`.
+
+### Visual Evidence for Corrections Pass:
+- **Corrections Browser Session Recording**:
+  `file:///C:/Users/tanvi/.gemini/antigravity-ide/brain/27428b79-571a-435e-9698-d352c3771579/phase02_corrections_qa_1789245027539.webp`
+- **1366 × 768 Verified Viewport**:
+  `file:///C:/Users/tanvi/.gemini/antigravity-ide/brain/27428b79-571a-435e-9698-d352c3771579/res_1366x768_view_1789245157091.png`
+- **1920 × 1080 Final Corrections Workstation**:
+  `file:///C:/Users/tanvi/.gemini/antigravity-ide/brain/27428b79-571a-435e-9698-d352c3771579/final_1920_view_1789246008565.png`
 
 ---
 *Report certified by KYNTRA Senior Implementation Engineer.*

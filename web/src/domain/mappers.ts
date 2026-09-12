@@ -33,6 +33,7 @@ import type {
   Provenance,
   RaceContext,
   RuleState,
+  RuleStatus,
   RuntimeContext,
   SourceMode,
   StabilityState,
@@ -333,21 +334,32 @@ export function mapRuleState(
   const trackStatus = runtimeSnap?.race_control?.['track_status'] || decision?.race.event_id || '1';
   const isVscSc = trackStatus === '4' || trackStatus === '6' || trackStatus === '7';
 
-  const allowed: CanonicalAction[] = (compliance?.allowed_actions as any) || [
-    'CONSERVE',
-    'BUILD',
-    'DEPLOY',
-  ];
-  const blocked: CanonicalAction[] = (compliance?.blocked_actions as any) || [];
+  let status: RuleStatus = 'UNKNOWN';
+  if (isVscSc) {
+    status = 'BLOCKED';
+  } else if (compliance?.status === 'LEGAL') {
+    status = 'ALLOWED';
+  } else if (compliance?.status === 'BLOCKED') {
+    status = 'BLOCKED';
+  } else {
+    status = 'UNKNOWN';
+  }
+
+  const allowed: CanonicalAction[] = (compliance?.allowed_actions as any) || (
+    status === 'ALLOWED' ? ['CONSERVE', 'BUILD', 'DEPLOY', 'OVERTAKE'] : []
+  );
+  const blocked: CanonicalAction[] = (compliance?.blocked_actions as any) || (
+    status === 'BLOCKED' ? ['OVERTAKE', 'DEPLOY'] : []
+  );
 
   return {
-    status: isVscSc ? 'BLOCKED' : compliance?.status === 'LEGAL' ? 'ALLOWED' : (compliance?.status as any) || 'ALLOWED',
+    status,
     rule_bundle_version: 'FIA_SR_ISSUE_08_2026',
     rule_bundle_sha256: '9f82ab4c12d5e...',
     active_flags: isVscSc ? ['SC_VSC_OVERTAKE_BAN'] : [],
     vsc_or_sc_active: isVscSc,
     yellow_flag_in_sector: false,
-    drs_legal: !isVscSc,
+    drs_legal: !isVscSc && status === 'ALLOWED',
     allowed_actions: allowed,
     blocked_actions: blocked,
     disqualification_reasons: {},

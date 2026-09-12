@@ -144,8 +144,8 @@ export const BottomIntelligence: React.FC<BottomIntelligenceProps> = ({
           <div className="tab-content-grid rules-tab-grid">
             <div className="telemetry-stat-card">
               <span className="stat-label text-muted">COMPLIANCE STATUS</span>
-              <span className={`stat-value font-bold ${compliance?.status === 'LEGAL' ? 'text-valid' : 'text-blocked'}`}>
-                {compliance?.status || 'LEGAL'}
+              <span className={`stat-value font-bold ${compliance?.status === 'LEGAL' ? 'text-valid' : compliance?.status === 'BLOCKED' ? 'text-blocked' : 'text-neutral'}`}>
+                {compliance?.status === 'LEGAL' ? 'ALLOWED' : compliance?.status || 'UNKNOWN'}
               </span>
               <span className="stat-sub text-muted">Sporting eligibility</span>
             </div>
@@ -153,7 +153,7 @@ export const BottomIntelligence: React.FC<BottomIntelligenceProps> = ({
             <div className="telemetry-stat-card">
               <span className="stat-label text-muted">ALLOWED ACTIONS</span>
               <span className="stat-value font-bold text-primary">
-                {compliance?.allowed_actions?.join(', ') || 'CONSERVE, BUILD, DEPLOY, OVERTAKE'}
+                {compliance?.allowed_actions && compliance.allowed_actions.length > 0 ? compliance.allowed_actions.join(', ') : 'UNKNOWN'}
               </span>
               <span className="stat-sub text-muted">Legally permitted</span>
             </div>

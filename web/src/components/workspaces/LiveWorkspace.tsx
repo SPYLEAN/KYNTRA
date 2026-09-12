@@ -177,8 +177,8 @@ export const LiveWorkspace: React.FC<LiveWorkspaceProps> = ({
                               {decision?.overtake.p_1_lap ? `${(decision.overtake.p_1_lap * 100).toFixed(0)}%` : '—'}
                             </td>
                             <td>
-                              <span className={item.compliance_status === 'LEGAL' ? 'text-legal' : 'text-blocked'}>
-                                {item.compliance_status === 'LEGAL' ? 'LEGAL' : 'BLK'}
+                              <span className={item.compliance_status === 'LEGAL' ? 'text-legal' : item.compliance_status === 'BLOCKED' ? 'text-blocked' : 'text-neutral'}>
+                                {item.compliance_status === 'LEGAL' ? 'ALLOWED' : item.compliance_status === 'BLOCKED' ? 'BLK' : 'UNK'}
                               </span>
                             </td>
                           </tr>
@@ -409,8 +409,8 @@ export const LiveWorkspace: React.FC<LiveWorkspaceProps> = ({
                   >
                     <span className="b-num mono">04</span>
                     <span className="b-label font-bold">AM I ALLOWED?</span>
-                    <span className={`b-metric mono font-bold ${decision?.compliance.status === 'LEGAL' ? 'text-legal' : 'text-blocked'}`}>
-                      {decision?.compliance.status === 'LEGAL' ? '✓ LEGAL' : '✕ BLOCKED'}
+                    <span className={`b-metric mono font-bold ${decision?.compliance.status === 'LEGAL' ? 'text-legal' : decision?.compliance.status === 'BLOCKED' ? 'text-blocked' : 'text-neutral'}`}>
+                      {decision?.compliance.status === 'LEGAL' ? '✓ ALLOWED' : decision?.compliance.status === 'BLOCKED' ? '✕ BLOCKED' : '— UNKNOWN'}
                     </span>
                     <span className="b-tag mono tag-green">GREEN TRACK</span>
                     <span className="b-arrow">&rarr;</span>

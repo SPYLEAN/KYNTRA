@@ -329,7 +329,28 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
               }
             />
           </div>
-          <div className="battle-card-content">
+          <div
+            className="battle-card-content clickable"
+            onClick={() => {
+              if (attackerCode && defenderCode) {
+                onOpenEvidence({
+                  title: `Tactical Battle State: ${attackerCode} vs ${defenderCode}`,
+                  value: gapSeconds != null ? `${gapSeconds.toFixed(2)}s` : 'TRACKED',
+                  status: 'INFO',
+                  provenance: 'LIVE',
+                  method: 'Live Timing Proximity Tracker',
+                  evidenceItems: [
+                    { label: 'Attacker Car', value: `${attackerCode} (P${cars[attackerCode]?.position || '—'})` },
+                    { label: 'Defender Car', value: `${defenderCode} (P${cars[defenderCode]?.position || '—'})` },
+                    { label: 'Interval Gap', value: gapSeconds != null ? `${gapSeconds.toFixed(2)}s` : 'N/A' },
+                    { label: 'Closing Rate', value: closingRate != null ? `${closingRate > 0 ? '+' : ''}${closingRate.toFixed(1)} m/s` : 'N/A' },
+                    { label: 'Distance Gap', value: distanceGapM != null ? `${distanceGapM} m` : 'N/A' },
+                  ],
+                });
+              }
+            }}
+            title="Click to inspect battle kinematics evidence"
+          >
             {attackerCode && defenderCode ? (
               <div className="battle-vs-row">
                 <div className="fighter att-fighter">
@@ -372,21 +393,40 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
           />
         </div>
 
-        {/* Sector 3: Simulated Energy Horizon (Authentic Technical Card) */}
+        {/* Sector 3: Simulated Energy State (Authentic Technical Card) */}
         <div className="right-panel-energy">
           <div className="panel-header-strip">
-            <span className="panel-title font-bold">ENERGY HORIZON</span>
+            <span className="panel-title font-bold">SIMULATED ENERGY STATE</span>
             <ProvenanceChip type="SIMULATED ENERGY" />
           </div>
-          <div className="energy-technical-card">
+          <div
+            className="energy-technical-card clickable"
+            onClick={() =>
+              onOpenEvidence({
+                title: 'Simulated 2026 Energy State & Usable SoC Window',
+                value: availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : '—',
+                status: 'SIMULATED',
+                provenance: 'SIMULATED ENERGY',
+                method: 'FIA 2026 Technical Regulations Straightline Power Taper Model (290-345 km/h)',
+                version: 'FIA_TR_ISSUE_20_2026',
+                evidenceItems: [
+                  { label: 'Energy State', value: 'SIMULATED — REGULATION CONSTRAINED' },
+                  { label: 'Usable SoC Window', value: availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : 'UNAVAILABLE' },
+                  { label: 'Lap Deployment Cap', value: '4.00 MJ (Regulation Cap)' },
+                  { label: 'MGU-K Power Limit', value: '350 kW' },
+                ],
+              })
+            }
+            title="Click to inspect simulated energy state & regulation evidence"
+          >
             <div className="energy-stat-row">
               <div className="stat-col">
-                <span className="stat-lbl text-muted">CURRENT STORE</span>
+                <span className="stat-lbl text-muted">USABLE SOC WINDOW</span>
                 <div className="stat-num-line">
                   <span className="stat-num mono-num font-bold text-primary">
                     {availEnergyMj != null ? `${availEnergyMj.toFixed(2)} MJ` : '—'}
                   </span>
-                  <span className="stat-sub text-muted mono-num">/ 4.00 MJ CAP</span>
+                  <span className="stat-sub text-muted mono-num">/ 4.00 MJ REGULATION WINDOW</span>
                 </div>
               </div>
               <div className="stat-col text-right">
@@ -400,7 +440,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
                 SCENARIO: <strong className="text-primary">Nominal 2026 TR</strong>
               </span>
               <span className="ctx-disclaimer text-muted">
-                SIMULATED — REGULATION CONSTRAINED (NOT MEASURED BATTERY SOC)
+                SIMULATED — REGULATION CONSTRAINED
               </span>
             </div>
           </div>
@@ -414,8 +454,8 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
               onClick={() =>
                 onOpenEvidence({
                   title: 'FIA Sporting & Technical Regulations Compliance',
-                  value: ruleStatus,
-                  status: ruleStatus === 'ALLOWED' ? 'VALID' : ruleStatus === 'UNKNOWN' ? 'UNKNOWN' : 'BLOCKED',
+                  value: ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus,
+                  status: ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL' ? 'VALID' : ruleStatus === 'UNKNOWN' ? 'UNKNOWN' : 'BLOCKED',
                   provenance: 'RULE CHECK',
                   method: 'Deterministic FIA 2026 Code C5.2.7 Check',
                 })
@@ -425,14 +465,14 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
               <span className="item-label text-muted">RULE ELIGIBILITY</span>
               <span
                 className={`item-status-val font-bold ${
-                  ruleStatus === 'ALLOWED'
+                  ruleStatus === 'ALLOWED' || ruleStatus === 'LEGAL'
                     ? 'text-valid'
                     : ruleStatus === 'UNKNOWN'
                     ? 'text-neutral'
                     : 'text-blocked'
                 }`}
               >
-                {ruleStatus}
+                {ruleStatus === 'LEGAL' ? 'ALLOWED' : ruleStatus}
               </span>
             </div>
 

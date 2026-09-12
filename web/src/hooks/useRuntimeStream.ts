@@ -220,7 +220,8 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/live`;
+    const defaultWsUrl = `${protocol}//${window.location.host}/api/live`;
+    const wsUrl = (import.meta as any).env?.VITE_WS_URL || defaultWsUrl;
 
     setRawConnectionStatus('RECONNECTING');
     addLog('RECONNECT', `Connecting to WebSocket stream at ${wsUrl}...`);

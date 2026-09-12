@@ -275,9 +275,9 @@ export interface LiveUpdatePayload {
 }
 
 export type OperatingMode = 'LIVE' | 'REPLAY' | 'FORECAST';
-export type ContextWorkspace = 'RACE' | 'STRATEGY' | 'REPLAY' | 'ANALYSIS' | 'SYSTEM' | 'BATTLE' | 'EVENTS';
+export type ContextWorkspace = 'RACE' | 'STRATEGY' | 'EVENTS' | 'ANALYSIS' | 'SYSTEM';
 
-export type WorkspaceId = 'LIVE' | 'REPLAY' | 'FORECAST' | 'RACE' | 'BATTLE' | 'STRATEGY' | 'COUNTERFACTUALS' | 'EVENTS' | 'SYSTEM';
+export type WorkspaceId = 'RACE' | 'STRATEGY' | 'EVENTS' | 'ANALYSIS' | 'SYSTEM';
 
 export type SystemTabId = 'OVERVIEW' | 'DATA' | 'MODEL' | 'ENERGY' | 'FIA' | 'PROVIDERS' | 'LIMITATIONS' | 'TECH_STACK';
 

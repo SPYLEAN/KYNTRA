@@ -262,8 +262,12 @@ export const ComplianceModal: React.FC<ModalProps & { compliance?: ComplianceSna
           <div className="modal-section">
             <h4>STATUS OVERVIEW</h4>
             <div className="compliance-summary-box">
-              <span className={`compliance-status-badge ${compliance?.status === 'LEGAL' ? 'legal' : 'blocked'}`}>
-                {compliance?.status === 'LEGAL' ? '✓ FULLY COMPLIANT (LEGAL)' : '✕ BLOCKED / RESTRICTED'}
+              <span className={`compliance-status-badge ${compliance?.status === 'LEGAL' ? 'legal' : compliance?.status === 'BLOCKED' ? 'blocked' : 'unknown'}`}>
+                {compliance?.status === 'LEGAL'
+                  ? '✓ FULLY COMPLIANT (ALLOWED)'
+                  : compliance?.status === 'BLOCKED'
+                  ? '✕ BLOCKED / RESTRICTED'
+                  : '— UNKNOWN (CLEARANCE UNVERIFIED)'}
               </span>
               <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>
                 Evaluated deterministically in Python backend by <code>kyntra.regulations.compliance</code> against
@@ -300,10 +304,10 @@ export const ComplianceModal: React.FC<ModalProps & { compliance?: ComplianceSna
                 </tr>
                 <tr>
                   <td className="mono">OVERTAKE (OVERRIDE)</td>
-                  <td className={compliance?.status === 'LEGAL' ? 'text-legal font-bold' : 'text-blocked font-bold'}>
-                    {compliance?.status === 'LEGAL' ? 'ALLOWED' : 'BLOCKED'}
+                  <td className={compliance?.status === 'LEGAL' ? 'text-legal font-bold' : compliance?.status === 'BLOCKED' ? 'text-blocked font-bold' : 'text-neutral font-bold'}>
+                    {compliance?.status === 'LEGAL' ? 'ALLOWED' : compliance?.status === 'BLOCKED' ? 'BLOCKED' : 'UNKNOWN'}
                   </td>
-                  <td className="mono">{compliance?.reason_codes?.join(', ') || 'ALLOWED'}</td>
+                  <td className="mono">{compliance?.reason_codes?.join(', ') || (compliance?.status === 'LEGAL' ? 'ALLOWED' : 'UNVERIFIED')}</td>
                 </tr>
               </tbody>
             </table>
