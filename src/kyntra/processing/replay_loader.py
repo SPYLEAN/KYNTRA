@@ -14,10 +14,29 @@ DEMO_DIR = PROJECT_ROOT / "data" / "demo"
 
 DRIVER_INFO = {
     "1": {"code": "VER", "name": "Max Verstappen", "team": "Red Bull Racing", "color": "#3671C6"},
+    "11": {"code": "PER", "name": "Sergio Perez", "team": "Red Bull Racing", "color": "#3671C6"},
     "12": {"code": "ANT", "name": "Kimi Antonelli", "team": "Mercedes", "color": "#27F4D2"},
     "63": {"code": "RUS", "name": "George Russell", "team": "Mercedes", "color": "#27F4D2"},
     "16": {"code": "LEC", "name": "Charles Leclerc", "team": "Ferrari", "color": "#E80020"},
+    "44": {"code": "HAM", "name": "Lewis Hamilton", "team": "Ferrari", "color": "#E80020"},
     "4": {"code": "NOR", "name": "Lando Norris", "team": "McLaren", "color": "#FF8000"},
+    "81": {"code": "PIA", "name": "Oscar Piastri", "team": "McLaren", "color": "#FF8000"},
+    "14": {"code": "ALO", "name": "Fernando Alonso", "team": "Aston Martin", "color": "#229971"},
+    "18": {"code": "STR", "name": "Lance Stroll", "team": "Aston Martin", "color": "#229971"},
+    "10": {"code": "GAS", "name": "Pierre Gasly", "team": "Alpine", "color": "#0093CC"},
+    "43": {"code": "COL", "name": "Franco Colapinto", "team": "Alpine", "color": "#0093CC"},
+    "23": {"code": "ALB", "name": "Alexander Albon", "team": "Williams", "color": "#00A0DE"},
+    "55": {"code": "SAI", "name": "Carlos Sainz", "team": "Williams", "color": "#00A0DE"},
+    "22": {"code": "TSU", "name": "Yuki Tsunoda", "team": "Racing Bulls", "color": "#6692FF"},
+    "30": {"code": "LAW", "name": "Liam Lawson", "team": "Racing Bulls", "color": "#6692FF"},
+    "3": {"code": "RIC", "name": "Daniel Ricciardo", "team": "Racing Bulls", "color": "#6692FF"},
+    "41": {"code": "HAD", "name": "Isack Hadjar", "team": "Racing Bulls", "color": "#6692FF"},
+    "27": {"code": "HUL", "name": "Nico Hulkenberg", "team": "Kick Sauber", "color": "#52E252"},
+    "5": {"code": "BOR", "name": "Gabriel Bortoleto", "team": "Kick Sauber", "color": "#52E252"},
+    "77": {"code": "BOT", "name": "Valtteri Bottas", "team": "Kick Sauber", "color": "#52E252"},
+    "6": {"code": "POU", "name": "Theo Pourchaire", "team": "Kick Sauber", "color": "#52E252"},
+    "31": {"code": "OCO", "name": "Esteban Ocon", "team": "Haas", "color": "#B6BABD"},
+    "87": {"code": "BEA", "name": "Oliver Bearman", "team": "Haas", "color": "#B6BABD"},
 }
 
 EVENT_INFO = {
