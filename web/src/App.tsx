@@ -11,6 +11,8 @@ import { EventsWorkspace } from './components/workspaces/EventsWorkspace';
 import { AnalysisWorkspace } from './components/workspaces/AnalysisWorkspace';
 import { SystemWorkspace } from './components/workspaces/SystemWorkspace';
 import { SessionSwitcher } from './components/SessionSwitcher';
+import { JudgeModeTour } from './components/common/JudgeModeTour';
+import { StructuredCopilot } from './components/common/StructuredCopilot';
 import { KyntraApiClient } from './api/client';
 import { useRuntimeStream } from './hooks/useRuntimeStream';
 
@@ -32,6 +34,11 @@ export default function App() {
 
   // Keyboard Shortcuts Modal
   const [shortcutsOpen, setShortcutsOpen] = useState<boolean>(false);
+
+  // Judge Mode & Structured Copilot State
+  const [judgeModeActive, setJudgeModeActive] = useState<boolean>(false);
+  const [judgeStepIndex, setJudgeStepIndex] = useState<number>(0);
+  const [copilotActive, setCopilotActive] = useState<boolean>(false);
 
   // 1. CANONICAL RUNTIME STATE OWNER (Phase 02 Architecture)
   const {
@@ -127,13 +134,21 @@ export default function App() {
         e.preventDefault();
         sendCommand({ action: 'step' });
       } else if (e.code === 'Escape') {
-        if (evidenceTarget) {
+        if (copilotActive) {
+          setCopilotActive(false);
+        } else if (judgeModeActive) {
+          setJudgeModeActive(false);
+        } else if (evidenceTarget) {
           setEvidenceTarget(null);
         } else if (sessionSwitcherOpen) {
           setSessionSwitcherOpen(false);
         } else if (shortcutsOpen) {
           setShortcutsOpen(false);
         }
+      } else if (e.key === 'c' || e.key === 'C') {
+        setCopilotActive((prev) => !prev);
+      } else if (e.key === 'j' || e.key === 'J') {
+        setJudgeModeActive((prev) => !prev);
       } else if (e.key === '1') {
         setCurrentContext('RACE');
       } else if (e.key === '2') {
@@ -179,6 +194,8 @@ export default function App() {
     evidenceTarget,
     sessionSwitcherOpen,
     shortcutsOpen,
+    copilotActive,
+    judgeModeActive,
     sendCommand,
     decision,
   ]);
@@ -200,6 +217,10 @@ export default function App() {
       onCloseEvidence={handleCloseEvidence}
       onOpenSessionSwitcher={() => setSessionSwitcherOpen(true)}
       onOpenShortcuts={() => setShortcutsOpen(true)}
+      judgeModeActive={judgeModeActive}
+      onToggleJudgeMode={() => setJudgeModeActive((prev) => !prev)}
+      copilotActive={copilotActive}
+      onToggleCopilot={() => setCopilotActive((prev) => !prev)}
       onSendCommand={sendCommand}
     >
       {/* Dynamic Viewport Content */}
@@ -261,6 +282,7 @@ export default function App() {
           transportType={transportType}
           latencyMs={latencyMs}
           connectionStatus={connectionStatus}
+          runtimeSnapshot={runtimeSnapshot}
         />
       )}
 
@@ -322,12 +344,20 @@ export default function App() {
                     <td>SYSTEM &amp; Module Diagnostics</td>
                   </tr>
                   <tr>
+                    <td><kbd>C</kbd></td>
+                    <td>Toggle Structured KYNTRA Copilot command HUD</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>J</kbd></td>
+                    <td>Toggle Judge Mode (10-Step Guided Product Tour)</td>
+                  </tr>
+                  <tr>
                     <td><kbd>E</kbd></td>
                     <td>Toggle Universal Forensic Evidence Drawer</td>
                   </tr>
                   <tr>
                     <td><kbd>ESC</kbd></td>
-                    <td>Close active Evidence Drawer or modal</td>
+                    <td>Close active Evidence Drawer, Copilot, or modal</td>
                   </tr>
                   <tr>
                     <td><kbd>?</kbd></td>
@@ -339,6 +369,25 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* 10-Step Guided Judge Mode Tour */}
+      <JudgeModeTour
+        isActive={judgeModeActive}
+        currentStepIndex={judgeStepIndex}
+        onStepChange={setJudgeStepIndex}
+        onClose={() => setJudgeModeActive(false)}
+        onNavigateWorkspace={setCurrentContext}
+      />
+
+      {/* Structured KYNTRA Copilot */}
+      <StructuredCopilot
+        isOpen={copilotActive}
+        onClose={() => setCopilotActive(false)}
+        decision={decision}
+        onOpenEvidence={handleOpenEvidence}
+        onNavigateWorkspace={setCurrentContext}
+        onSendCommand={sendCommand}
+      />
     </AppShell>
   );
 }

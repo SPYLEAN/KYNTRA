@@ -4,12 +4,14 @@ import type { BattleWatchlistItem } from '../types';
 interface BattleWatchlistPanelProps {
   watchlist: BattleWatchlistItem[];
   selectedBattleId?: string | null;
+  canonicalRuleStatus?: string | null;
   onSelectBattle: (battleId: string) => void;
 }
 
 export const BattleWatchlistPanel: React.FC<BattleWatchlistPanelProps> = ({
   watchlist,
   selectedBattleId,
+  canonicalRuleStatus,
   onSelectBattle,
 }) => {
   const getPriorityBadgeClass = (priority: string) => {
@@ -68,6 +70,12 @@ export const BattleWatchlistPanel: React.FC<BattleWatchlistPanelProps> = ({
             <tbody>
               {watchlist.map((item) => {
                 const isSelected = item.battle_id === selectedBattleId;
+                const effectiveStatus = isSelected && canonicalRuleStatus ? canonicalRuleStatus : (item.compliance_status || 'UNKNOWN');
+                const isLegal = effectiveStatus === 'LEGAL' || effectiveStatus === 'ALLOWED' || effectiveStatus === 'CLEAR';
+                const isBlocked = effectiveStatus === 'BLOCKED' || effectiveStatus === 'DISQUALIFIED';
+                const statusLabel = isLegal ? '✓ LEGAL' : isBlocked ? '✕ BLK' : '? UNK';
+                const statusClass = isLegal ? 'text-valid' : isBlocked ? 'text-blocked' : 'text-neutral';
+
                 return (
                   <tr
                     key={item.battle_id}
@@ -97,8 +105,8 @@ export const BattleWatchlistPanel: React.FC<BattleWatchlistPanelProps> = ({
                       </span>
                     </td>
                     <td>
-                      <span className={item.compliance_status === 'LEGAL' ? 'text-valid' : 'text-blocked'}>
-                        {item.compliance_status === 'LEGAL' ? '✓ LEGAL' : '✕ BLK'}
+                      <span className={statusClass}>
+                        {statusLabel}
                       </span>
                     </td>
                   </tr>

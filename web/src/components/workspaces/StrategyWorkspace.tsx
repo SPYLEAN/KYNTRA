@@ -68,6 +68,8 @@ export const StrategyWorkspace: React.FC<StrategyWorkspaceProps> = ({
             stabilityVerdict={stabilityVerdict}
             availEnergyMj={availEnergyMj}
             decisionSnapshotId={decision?.decision_id}
+            callLifecycle={callLifecycle}
+            candidateCall={candidateCall}
             onOpenEvidence={onOpenEvidence}
           />
 

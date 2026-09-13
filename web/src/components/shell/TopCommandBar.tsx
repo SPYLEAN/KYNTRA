@@ -17,6 +17,10 @@ interface TopCommandBarProps {
   onOpenSessionSwitcher: () => void;
   onOpenShortcuts: () => void;
   onOpenSystemInspector: () => void;
+  judgeModeActive?: boolean;
+  onToggleJudgeMode?: () => void;
+  copilotActive?: boolean;
+  onToggleCopilot?: () => void;
 }
 
 export const TopCommandBar: React.FC<TopCommandBarProps> = ({
@@ -32,6 +36,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   onOpenSessionSwitcher,
   onOpenShortcuts,
   onOpenSystemInspector,
+  judgeModeActive = false,
+  onToggleJudgeMode,
+  copilotActive = false,
+  onToggleCopilot,
 }) => {
   const eventId = runtimeSnapshot?.event_id || raceState?.session.event_id || '2026_13_ITA';
   const eventName = raceState?.session.event_name || 'Italian Grand Prix';
@@ -189,6 +197,30 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           <span className="stream-dot" />
           <span>{transportType === 'WS_STREAM' ? 'WS STREAM' : 'HTTP POLL'}</span>
         </div>
+
+        {/* Judge Mode Guided Tour Trigger */}
+        {onToggleJudgeMode && (
+          <button
+            type="button"
+            className={`topbar-hud-btn tour-trigger ${judgeModeActive ? 'active' : ''}`}
+            onClick={onToggleJudgeMode}
+            title="Toggle Judge Mode: 10-Step Guided Tour"
+          >
+            <span className="hud-badge font-bold">JUDGE MODE</span>
+          </button>
+        )}
+
+        {/* Structured Copilot Trigger */}
+        {onToggleCopilot && (
+          <button
+            type="button"
+            className={`topbar-hud-btn copilot-trigger ${copilotActive ? 'active' : ''}`}
+            onClick={onToggleCopilot}
+            title="Toggle Structured KYNTRA Copilot (Press C)"
+          >
+            <span className="hud-badge font-bold">COPILOT</span>
+          </button>
+        )}
 
         {/* Shortcuts Trigger */}
         <button

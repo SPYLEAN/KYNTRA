@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { CarState, TrackGeometry, TrackLayerState, TrackViewMode } from '../types';
+import type { CarState, TrackGeometry, TrackViewMode } from '../types';
 
 interface DigitalTrackTwinProps {
   geometry: TrackGeometry | null;
@@ -27,17 +27,21 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
   spatialGapMeters,
 }) => {
   const [viewMode, setViewMode] = useState<TrackViewMode>('FIELD');
-  const [layers, setLayers] = useState<TrackLayerState>({
+  const [layers, setLayers] = useState({
     cars: true,
-    sectors: true,
     battles: true,
+    sectors: true,
+    field: true,
+    trails: true,
+    labels: true,
   });
+  const [overflowOpen, setOverflowOpen] = useState<boolean>(false);
 
   // Track recent breadcrumb trail for selected cars
   const [attackerTrail, setAttackerTrail] = useState<{ x: number; y: number }[]>([]);
   const [defenderTrail, setDefenderTrail] = useState<{ x: number; y: number }[]>([]);
 
-  const toggleLayer = (layer: 'cars' | 'sectors' | 'battles') => {
+  const toggleLayer = (layer: 'cars' | 'battles' | 'sectors' | 'field' | 'trails' | 'labels') => {
     setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
   };
 
@@ -88,6 +92,14 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
       setDefenderTrail((prev) => [...prev.slice(-5), defCoords]);
     }
   }, [defCoords?.x, defCoords?.y]);
+
+  // Close layer overflow menu on outside click
+  useEffect(() => {
+    if (!overflowOpen) return;
+    const handleOutsideClick = () => setOverflowOpen(false);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [overflowOpen]);
 
   const isNeutralized = ['2', '4', '5', '6', '7', 'SC', 'VSC', 'RED'].includes(trackStatus);
   const trackStrokeColor = isNeutralized ? '#f59e0b' : '#475569';
@@ -174,31 +186,23 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
           <span className="track-field-count mono font-bold text-accent">{carList.length} CARS</span>
         </div>
 
-        {/* Camera Focus Mode Toggles */}
-        <div className="track-camera-controls" role="group" aria-label="Camera modes">
-          <span className="camera-label mono font-bold">CAMERA:</span>
+        {/* Separate Compact Focus-Lock Control */}
+        <div className="track-focus-control" role="group" aria-label="Focus lock control">
           <button
             type="button"
-            className={`cam-mode-btn ${viewMode === 'FIELD' ? 'active' : ''}`}
-            onClick={() => setViewMode('FIELD')}
-            title="Field View: Entire Circuit Overview"
-          >
-            FIELD
-          </button>
-          <button
-            type="button"
-            className={`cam-mode-btn ${viewMode === 'FOCUS' ? 'active' : ''}`}
-            onClick={() => setViewMode('FOCUS')}
-            title="Battle Focus: Dynamically frame active engagement"
+            className={`focus-lock-btn mono font-bold ${viewMode === 'FOCUS' ? 'locked' : ''}`}
+            onClick={() => setViewMode((prev) => (prev === 'FOCUS' ? 'FIELD' : 'FOCUS'))}
             disabled={!attCoords || !defCoords}
+            title={viewMode === 'FOCUS' ? 'Focus Lock Active (Battle Frame). Click to view field.' : 'Focus Lock Inactive (Field Overview). Click to lock battle focus.'}
           >
-            FOCUS
+            <span className="focus-indicator-dot" />
+            <span className="focus-text">FOCUS LOCK: {viewMode === 'FOCUS' ? 'ON' : 'OFF'}</span>
           </button>
         </div>
 
-        {/* Compact Layer Toggles */}
+        {/* Compact Layer Controls: LAYERS [CARS] [BATTLE] [SECTORS] [•••] */}
         <div className="track-layer-toggles" role="toolbar" aria-label="Track layers">
-          <span className="layer-label mono font-bold">LAYERS:</span>
+          <span className="layer-label mono font-bold">LAYERS</span>
           <button
             type="button"
             className={`layer-btn ${layers.cars ? 'active' : ''}`}
@@ -209,20 +213,60 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
           </button>
           <button
             type="button"
+            className={`layer-btn ${layers.battles ? 'active' : ''}`}
+            onClick={() => toggleLayer('battles')}
+            title="Toggle Active Battle Vector"
+          >
+            BATTLE
+          </button>
+          <button
+            type="button"
             className={`layer-btn ${layers.sectors ? 'active' : ''}`}
             onClick={() => toggleLayer('sectors')}
             title="Toggle Sector Splits"
           >
             SECTORS
           </button>
-          <button
-            type="button"
-            className={`layer-btn ${layers.battles ? 'active' : ''}`}
-            onClick={() => toggleLayer('battles')}
-            title="Toggle Active Battle Vector"
-          >
-            BATTLES
-          </button>
+
+          {/* Overflow Menu: FIELD, TRAILS, LABELS */}
+          <div className="layer-overflow-wrap">
+            <button
+              type="button"
+              className={`layer-btn overflow-trigger ${overflowOpen ? 'active' : ''}`}
+              onClick={() => setOverflowOpen((prev) => !prev)}
+              title="More layer options (Field, Trails, Labels)"
+            >
+              •••
+            </button>
+            {overflowOpen && (
+              <div className="layer-overflow-menu mono" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className={`overflow-item ${layers.field ? 'active' : ''}`}
+                  onClick={() => toggleLayer('field')}
+                >
+                  <span className="overflow-check">{layers.field ? '✓' : ' '}</span>
+                  <span>FIELD</span>
+                </button>
+                <button
+                  type="button"
+                  className={`overflow-item ${layers.trails ? 'active' : ''}`}
+                  onClick={() => toggleLayer('trails')}
+                >
+                  <span className="overflow-check">{layers.trails ? '✓' : ' '}</span>
+                  <span>TRAILS</span>
+                </button>
+                <button
+                  type="button"
+                  className={`overflow-item ${layers.labels ? 'active' : ''}`}
+                  onClick={() => toggleLayer('labels')}
+                >
+                  <span className="overflow-check">{layers.labels ? '✓' : ' '}</span>
+                  <span>LABELS</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -405,7 +449,7 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
 
 
             {/* Attacker Breadcrumb Trail (Restrained Red) */}
-            {layers.cars && attackerTrail.length > 1 && (
+            {layers.trails && layers.cars && attackerTrail.length > 1 && (
               <polyline
                 points={attackerTrail.map((p) => `${p.x},${p.y}`).join(' ')}
                 fill="none"
@@ -417,7 +461,7 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
             )}
 
             {/* Defender Breadcrumb Trail (Restrained Cyan) */}
-            {layers.cars && defenderTrail.length > 1 && (
+            {layers.trails && layers.cars && defenderTrail.length > 1 && (
               <polyline
                 points={defenderTrail.map((p) => `${p.x},${p.y}`).join(' ')}
                 fill="none"
@@ -477,6 +521,11 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
                 const isAttacker = car.driver === attackerCode;
                 const isDefender = car.driver === defenderCode;
 
+                // Field filtering: if car is neither attacker nor defender, check layers.field
+                if (!isAttacker && !isDefender && !layers.field) {
+                  return null;
+                }
+
                 // Color palette per specification:
                 // Attacker: restrained red (#EF4444)
                 // Defender: restrained cyan (#06B6D4)
@@ -527,16 +576,18 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
                     />
 
                     {/* Driver Code Label (Attacker above, Defender below, Others compact) */}
-                    <text
-                      y={labelOffsetY}
-                      textAnchor="middle"
-                      fill={labelColor}
-                      fontSize={isAttacker || isDefender ? '9' : '7.5'}
-                      fontWeight={isAttacker || isDefender ? '700' : '500'}
-                      fontFamily="monospace"
-                    >
-                      {car.driver}
-                    </text>
+                    {layers.labels && (
+                      <text
+                        y={labelOffsetY}
+                        textAnchor="middle"
+                        fill={labelColor}
+                        fontSize={isAttacker || isDefender ? '9' : '7.5'}
+                        fontWeight={isAttacker || isDefender ? '700' : '500'}
+                        fontFamily="monospace"
+                      >
+                        {car.driver}
+                      </text>
+                    )}
 
                     {/* Position Number inside Circle */}
                     <text

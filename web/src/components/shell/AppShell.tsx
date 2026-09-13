@@ -31,6 +31,10 @@ interface AppShellProps {
   onCloseEvidence: () => void;
   onOpenSessionSwitcher: () => void;
   onOpenShortcuts: () => void;
+  judgeModeActive?: boolean;
+  onToggleJudgeMode?: () => void;
+  copilotActive?: boolean;
+  onToggleCopilot?: () => void;
   onSendCommand?: (payload: any) => void;
   children: React.ReactNode;
 }
@@ -51,6 +55,10 @@ export const AppShell: React.FC<AppShellProps> = ({
   onCloseEvidence,
   onOpenSessionSwitcher,
   onOpenShortcuts,
+  judgeModeActive,
+  onToggleJudgeMode,
+  copilotActive,
+  onToggleCopilot,
   onSendCommand,
   children,
 }) => {
@@ -82,6 +90,10 @@ export const AppShell: React.FC<AppShellProps> = ({
         onOpenSessionSwitcher={onOpenSessionSwitcher}
         onOpenShortcuts={onOpenShortcuts}
         onOpenSystemInspector={() => onSelectContext('SYSTEM')}
+        judgeModeActive={judgeModeActive}
+        onToggleJudgeMode={onToggleJudgeMode}
+        copilotActive={copilotActive}
+        onToggleCopilot={onToggleCopilot}
       />
 
       {/* 2. Main Workstation Body (Left Rail + Central Viewport + Right Evidence Drawer) */}

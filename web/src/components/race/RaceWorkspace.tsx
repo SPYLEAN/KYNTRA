@@ -72,7 +72,13 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
 
   const energy = decision?.energy;
   const availEnergyMj = energy?.available_energy_mj ?? null;
-  const ruleStatus = decision?.compliance?.status || 'ALLOWED';
+  const canonicalRuleStatus = decision?.compliance?.status || 'UNKNOWN';
+  const ruleStatus: 'ALLOWED' | 'BLOCKED' | 'UNKNOWN' =
+    canonicalRuleStatus === 'LEGAL'
+      ? 'ALLOWED'
+      : canonicalRuleStatus === 'BLOCKED'
+      ? 'BLOCKED'
+      : 'UNKNOWN';
   const stabilityVerdict = decision?.stability?.verdict || 'FAVORABLE';
 
   const whySelected = publishedCall?.why_selected || candidateCall?.why_selected || [];
@@ -117,6 +123,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
             <BattleWatchlistPanel
               watchlist={watchlist}
               selectedBattleId={selectedBattleId}
+              canonicalRuleStatus={canonicalRuleStatus}
               onSelectBattle={onSelectBattle}
             />
           </div>
@@ -400,7 +407,7 @@ export const RaceWorkspace: React.FC<RaceWorkspaceProps> = ({
             availEnergyMj={availEnergyMj}
             actions={runtimeSnapshot?.current_matrix?.actions}
             activeActionKey={(publishedCall?.backend_action ?? 'OVERTAKE') as 'CONSERVE' | 'BUILD' | 'DEPLOY' | 'OVERTAKE'}
-            ruleStatus={ruleStatus === 'LEGAL' ? 'ALLOWED' : (ruleStatus as 'ALLOWED' | 'BLOCKED' | 'UNKNOWN') || 'UNKNOWN'}
+            ruleStatus={ruleStatus}
             stabilityVerdict={stabilityVerdict === 'FAVORABLE' ? 'UNKNOWN' : (stabilityVerdict as 'HIGH_RISK' | 'CAUTION' | 'UNKNOWN') || 'UNKNOWN'}
             raceControlStatus={runtimeSnapshot?.race_control?.status ?? 'GREEN'}
             onOpenEvidence={onOpenEvidence}

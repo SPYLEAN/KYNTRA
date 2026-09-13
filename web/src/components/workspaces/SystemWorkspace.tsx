@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import type { EvidenceInspectionTarget, OperatingMode, SystemStatus } from '../../types';
+import type { EvidenceInspectionTarget, KyntraRuntimeSnapshot, OperatingMode, SystemHealthStatus, SystemStatus } from '../../types';
+import { resolveSystemHealthDisplay, type SystemHealthDisplayStatus } from '../../domain/types';
 import { ProvenanceChip } from '../common/ProvenanceChip';
 
 interface SystemWorkspaceProps {
@@ -11,6 +12,7 @@ interface SystemWorkspaceProps {
   transportType?: 'WEBSOCKET' | 'POLLING' | 'OFFLINE' | 'WS_STREAM' | 'HTTP_POLL';
   latencyMs?: number | null;
   connectionStatus?: string;
+  runtimeSnapshot?: KyntraRuntimeSnapshot | null;
 }
 
 export const SystemWorkspace: React.FC<SystemWorkspaceProps> = ({
@@ -22,24 +24,28 @@ export const SystemWorkspace: React.FC<SystemWorkspaceProps> = ({
   transportType = 'WEBSOCKET',
   latencyMs = 18,
   connectionStatus = 'CONNECTED',
+  runtimeSnapshot,
 }) => {
   const [activeTab, setActiveTab] = useState<'HEALTH' | 'TRANSPORT' | 'INTEGRITY' | 'PERSISTENCE' | 'PROVENANCE'>('HEALTH');
 
-  // Derive primary status strictly from available health semantics
+  // Derive primary status strictly from canonical overall health derivation
   const isModelLoaded = systemStatus?.overtake_model?.loaded ?? true;
-  const isTransportAlive = wsConnected || connectionStatus === 'CONNECTED';
+  const isTransportAlive = wsConnected || connectionStatus === 'CONNECTED' || transportType === 'POLLING' || transportType === 'HTTP_POLL';
+  const rawHealth: SystemHealthStatus = (runtimeSnapshot?.health?.system_health as any) || (isModelLoaded ? 'OPERATIONAL' : 'DEGRADED');
 
-  let primaryStatus: 'OPERATIONAL' | 'DEGRADED — NON-BLOCKING' | 'DECISION_BLOCKED' | 'OFFLINE' = 'OPERATIONAL';
+  // OFFLINE only if actual offline definition is met (connection is offline or raw health is explicitly offline)
+  const isActualOffline = connectionStatus === 'OFFLINE' || rawHealth === 'OFFLINE';
+
+  const primaryStatus: SystemHealthDisplayStatus = isActualOffline
+    ? 'OFFLINE'
+    : resolveSystemHealthDisplay(rawHealth, runtimeSnapshot?.health?.modules);
+
   let primaryStatusClass = 'status-operational';
-
-  if (!isTransportAlive) {
-    primaryStatus = 'OFFLINE';
+  if (primaryStatus === 'OFFLINE') {
     primaryStatusClass = 'status-blocked';
-  } else if (!isModelLoaded) {
-    primaryStatus = 'DECISION_BLOCKED';
+  } else if (primaryStatus === 'DECISION_BLOCKED') {
     primaryStatusClass = 'status-blocked';
-  } else if (transportType === 'POLLING' || transportType === 'HTTP_POLL') {
-    primaryStatus = 'DEGRADED — NON-BLOCKING';
+  } else if (primaryStatus === 'DEGRADED — NON-BLOCKING') {
     primaryStatusClass = 'status-degraded';
   }
 

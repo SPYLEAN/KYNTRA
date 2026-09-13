@@ -12,6 +12,8 @@ interface DecisionDependencyGraphProps {
   stabilityVerdict?: 'HIGH_RISK' | 'CAUTION' | 'UNKNOWN';
   availEnergyMj?: number | null;
   decisionSnapshotId?: string | null;
+  callLifecycle?: string;
+  candidateCall?: any;
   onOpenEvidence: (target: EvidenceInspectionTarget) => void;
 }
 
@@ -22,15 +24,48 @@ export const DecisionDependencyGraph: React.FC<DecisionDependencyGraphProps> = (
   stabilityVerdict = 'UNKNOWN',
   availEnergyMj = 3.20,
   decisionSnapshotId,
+  callLifecycle,
+  candidateCall,
   onOpenEvidence,
 }) => {
-  const winner = publishedCall?.backend_action ?? matrix?.ranking?.winner ?? 'OVERTAKE';
-  const callUi = publishedCall?.ui_call ?? 'OVERTAKE NOW';
-  const lifecycle = publishedCall?.lifecycle_state ?? 'VALID';
-  const isWithheld = lifecycle === 'WITHHELD' || lifecycle === 'BLOCKED';
+  const lifecycle = (publishedCall?.lifecycle_state || callLifecycle || 'WITHHELD').toUpperCase();
+  const isValidPublished = (lifecycle === 'VALID' || lifecycle === 'AGING') && publishedCall != null;
+  const isTied = matrix?.ranking?.winner === 'NO_DOMINANT_ACTION' || Boolean((matrix?.ranking as any)?.is_tie);
+  const candidateAction = candidateCall?.canonical_action || matrix?.ranking?.winner || null;
+
+  let callUi = 'CALL WITHHELD';
+  let winner = 'WITHHELD';
+  let isWithheld = true;
+
+  if (isValidPublished) {
+    callUi = publishedCall.ui_call;
+    winner = publishedCall.backend_action;
+    isWithheld = false;
+  } else if (lifecycle === 'WITHHELD') {
+    callUi = 'CALL WITHHELD';
+    winner = candidateAction ? `CANDIDATE: ${candidateAction}` : 'WITHHELD';
+    isWithheld = true;
+  } else if (lifecycle === 'BLOCKED') {
+    callUi = 'CALL BLOCKED';
+    winner = candidateAction ? `CANDIDATE: ${candidateAction}` : 'BLOCKED';
+    isWithheld = true;
+  } else if (lifecycle === 'PENDING_FINAL_GATE') {
+    callUi = 'PENDING FINAL GATE';
+    winner = candidateAction ? `CANDIDATE: ${candidateAction}` : 'EVALUATING';
+    isWithheld = true;
+  } else if (isTied) {
+    callUi = 'NO DOMINANT ACTION';
+    winner = 'TIED / NONE';
+    isWithheld = true;
+  } else {
+    callUi = publishedCall?.ui_call || 'NO PUBLISHED CALL';
+    winner = publishedCall?.backend_action || (candidateAction ? `CANDIDATE: ${candidateAction}` : 'NONE');
+    isWithheld = true;
+  }
 
   const actions = matrix?.actions;
-  const winnerActionData = actions ? actions[winner as 'CONSERVE' | 'BUILD' | 'DEPLOY' | 'OVERTAKE'] : null;
+  const lookupKey = (isValidPublished ? winner : candidateAction) as 'CONSERVE' | 'BUILD' | 'DEPLOY' | 'OVERTAKE' | null;
+  const winnerActionData = actions && lookupKey ? actions[lookupKey] : null;
 
   // Gate checks
   const rulePassed = ruleStatus === 'ALLOWED';
@@ -277,10 +312,16 @@ export const DecisionDependencyGraph: React.FC<DecisionDependencyGraphProps> = (
             title="Click to inspect Tiers 5-6 Strategy Ranking evidence"
           >
             <div className="ranking-node-content mono">
-              <span className="r-tag font-bold text-valid">★ LEXICOGRAPHIC RESOLUTION:</span>
-              <span className="r-winner font-bold text-primary">{winner}</span>
+              <span className={`r-tag font-bold ${isTied ? 'text-threat' : 'text-valid'}`}>
+                ★ LEXICOGRAPHIC RESOLUTION:
+              </span>
+              <span className={`r-winner font-bold ${isTied ? 'text-muted' : 'text-primary'}`}>
+                {isTied ? 'NO DOMINANT ACTION (TIED / INDETERMINATE)' : (isValidPublished ? winner : (candidateAction ? `CANDIDATE: ${candidateAction}` : 'INDETERMINATE'))}
+              </span>
               <span className="r-sub text-muted">
-                Alternatives eliminated: CONSERVE (Tier 4) • BUILD (Tier 4) • DEPLOY (Tier 4)
+                {isTied
+                  ? 'No single dominant action cleared all 6 tiers unconditionally.'
+                  : 'Alternatives eliminated: CONSERVE (Tier 4) • BUILD (Tier 4) • DEPLOY (Tier 4)'}
               </span>
             </div>
           </div>

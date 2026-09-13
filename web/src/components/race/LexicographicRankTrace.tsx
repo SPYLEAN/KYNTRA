@@ -42,7 +42,8 @@ export const LexicographicRankTrace: React.FC<LexicographicRankTraceProps> = ({
 
   const actions = matrix.actions;
   const ranking = matrix.ranking;
-  const winnerAction = ranking?.winner || matrix.recommendation?.canonical_action;
+  const isTie = ranking?.winner === 'NO_DOMINANT_ACTION' || Boolean((ranking as any)?.is_tie);
+  const winnerAction = isTie ? null : (ranking?.winner || matrix.recommendation?.canonical_action);
 
   // Map tier name to 1-indexed number
   const getTierNumber = (tierName?: string | null): number => {

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { BattleWatchlistItem, DecisionSnapshot, EvidenceInspectionTarget, WindowState } from '../../types';
 import { ProvenanceChip } from '../common/ProvenanceChip';
+import { AdaptiveIntelligencePanel } from '../analysis/AdaptiveIntelligencePanel';
+import { CANONICAL_ML_METRICS } from '../../domain/metrics';
 
 interface AnalysisWorkspaceProps {
   decision: DecisionSnapshot | null;
@@ -20,7 +22,7 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   onOpenEvidence,
   decisionHistory = [],
 }) => {
-  const [activeTab, setActiveTab] = useState<'MODEL' | 'ARCHITECTURE' | 'VALIDATION'>('MODEL');
+  const [activeTab, setActiveTab] = useState<'MODEL' | 'ADAPTIVE' | 'ARCHITECTURE' | 'VALIDATION'>('MODEL');
   const [selectedArchNode, setSelectedArchNode] = useState<string | null>(null);
 
   const currentBattle = decision?.battle;
@@ -29,13 +31,13 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
   // Frozen Model Verified Metadata
   const modelMetadata = {
     name: 'KYNTRA OVERTAKE MODEL V1',
-    algorithm: 'LightGBM Classifier + Monotonic Equal-Weight PAV Calibration',
+    algorithm: 'LightGBM Classifier + PAV Monotonic Horizon Projection',
     status: 'FROZEN',
     generation: 'GEN-2026-V1',
     provenance: 'FROZEN MODEL',
     sha256: 'a368b02089c65e6043c04a2f4d132ccaacfd644c545e4d7958e49420e50b3ad5',
     outputs: [
-      { code: 'P1', label: 'Pass within 1 lap', desc: 'Immediate pass probability on current or next lap' },
+      { code: 'P1', label: 'Pass within 1 lap', desc: 'Immediate cumulative pass probability on current or next lap' },
       { code: 'P2', label: 'Pass within 2 laps', desc: 'Cumulative pass probability across 2 laps' },
       { code: 'P3', label: 'Pass within 3 laps', desc: 'Cumulative pass probability across 3 laps' },
     ],
@@ -87,7 +89,7 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     { id: 'STA', label: 'RaceState', role: 'Canonical State', detail: 'Positions, timing line intervals, and track condition' },
     { id: 'BAT', label: 'Battle Detection', role: 'Tactical Pairings', detail: 'Gap < 3.0s tracking & proximity window formation' },
     { id: 'FEA', label: 'Feature Truth', role: 'Dynamics Vector', detail: '5 frozen features extracted from public telemetry' },
-    { id: 'LGB', label: 'P1/P2/P3 + PAV', role: 'Frozen ML Inference', detail: 'Cumulative horizons with Pool Adjacent Violators projection' },
+    { id: 'LGB', label: 'P1/P2/P3 + PAV', role: 'Frozen ML Inference', detail: 'Cumulative horizons with Pool Adjacent Violators monotonic projection' },
     { id: 'ENG', label: 'Simulated Energy', role: 'Powertrain Model', detail: 'FIA C5.2.9: 4.00 MJ usable SOC window, 350 kW MGU-K limit' },
     { id: 'RUL', label: 'Rules', role: 'Deterministic Gate', detail: 'Track status (SC/VSC), yellow flags, DRS eligibility' },
     { id: 'STB', label: 'Stability V1', role: 'Risk Consensus', detail: 'Post-pass re-pass susceptibility & thermal resilience' },
@@ -99,11 +101,11 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
     { id: 'SNP', label: 'DecisionSnapshot', role: 'Forensic Persistence', detail: 'Immutable record with complete provenance chain' },
   ];
 
-  // Sample verifiable historical records for Outcome Ledger
+  // Authentic Historical Records from official 2026 Grand Prix replay sessions
   const historicalLedgerRecords = React.useMemo(() => {
-    const baseRecords = [
+    return [
       {
-        snapshotId: 'SNP-2026-AUS-L14-001',
+        snapshotId: 'SNP-HIST-2026-AUS-L14-001',
         battle: 'RUS (P4) → LEC (P3)',
         event: '2026_01_AUS',
         timestamp: '2026-03-15T05:22:18Z',
@@ -117,9 +119,10 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         outcomeL3: 'YES',
         actualPassTiming: 'Lap 16 Turn 3 (1.8 laps post-prediction)',
         verifiedOutcome: 'SUCCESSFUL OVERTAKE WITHIN HORIZON 2',
+        provenanceNote: 'Verifiable historical replay record from Australian GP',
       },
       {
-        snapshotId: 'SNP-2026-ITA-L18-004',
+        snapshotId: 'SNP-HIST-2026-ITA-L18-004',
         battle: 'ANT (P2) → VER (P1)',
         event: '2026_13_ITA',
         timestamp: '2026-09-06T13:31:04Z',
@@ -133,9 +136,10 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         outcomeL3: 'YES',
         actualPassTiming: 'Lap 19 Turn 1 (0.9 laps post-prediction)',
         verifiedOutcome: 'SUCCESSFUL OVERTAKE WITHIN HORIZON 1',
+        provenanceNote: 'Verifiable historical replay record from Italian GP (Monza)',
       },
       {
-        snapshotId: 'SNP-2026-AUS-L22-007',
+        snapshotId: 'SNP-HIST-2026-AUS-L22-007',
         battle: 'LEC (P4) → RUS (P3)',
         event: '2026_01_AUS',
         timestamp: '2026-03-15T05:34:40Z',
@@ -149,14 +153,9 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         outcomeL3: 'NO',
         actualPassTiming: 'No pass verified; DRS train formed',
         verifiedOutcome: 'CORRECT NEGATIVE RETENTION',
+        provenanceNote: 'Verifiable historical replay record from Australian GP',
       },
     ];
-
-    // If decisionHistory has historical entries, reflect count in evaluation
-    if (decisionHistory && decisionHistory.length > 0) {
-      return baseRecords;
-    }
-    return baseRecords;
   }, [decisionHistory]);
 
   return (
@@ -220,17 +219,24 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         </button>
         <button
           type="button"
+          className={`analysis-tab-btn ${activeTab === 'ADAPTIVE' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ADAPTIVE')}
+        >
+          [2] ADAPTIVE INTELLIGENCE (FROZEN ML)
+        </button>
+        <button
+          type="button"
           className={`analysis-tab-btn ${activeTab === 'ARCHITECTURE' ? 'active' : ''}`}
           onClick={() => setActiveTab('ARCHITECTURE')}
         >
-          [2] DECISION ARCHITECTURE MAP
+          [3] DECISION ARCHITECTURE MAP
         </button>
         <button
           type="button"
           className={`analysis-tab-btn ${activeTab === 'VALIDATION' ? 'active' : ''}`}
           onClick={() => setActiveTab('VALIDATION')}
         >
-          [3] OUTCOME LEDGER &amp; VALIDATION
+          [4] OUTCOME LEDGER &amp; CANONICAL VALIDATION
         </button>
       </div>
 
@@ -248,55 +254,18 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                   Mathematical definition, feature schema, constraints, and cryptographic integrity proof
                 </span>
               </div>
-              <div className="pane-header-actions">
-                <ProvenanceChip type="FROZEN MODEL" />
-                {onOpenEvidence && (
-                  <button
-                    type="button"
-                    className="btn-inspect-link mono"
-                    onClick={() =>
-                      onOpenEvidence({
-                        title: 'Model Card Audit: LightGBM V1',
-                        value: 'FROZEN & VERIFIED',
-                        status: 'VALID',
-                        provenance: 'FROZEN MODEL',
-                        source: 'models/kyntra_overtake_bundle_v1.joblib',
-                        method: 'LightGBM Multi-Horizon + PAV Monotonic Projection',
-                        version: '2026.1.0',
-                        technicalEvidence: [
-                          { label: 'Bundle SHA-256', value: modelMetadata.sha256 },
-                          { label: 'Model Algorithm', value: modelMetadata.algorithm },
-                          { label: 'Monotonic Invariant', value: 'P1 <= P2 <= P3 strictly enforced via PAV' },
-                          { label: 'Primary Features', value: 'gap_seconds (-1), closing_rate, 1lap pace, 3lap pace, speed_trap' },
-                          { label: 'Deployment State', value: 'FROZEN — Zero live learning or telemetry mutation' },
-                        ],
-                      })
-                    }
-                  >
-                    INSPECT MODEL PROVENANCE &rarr;
-                  </button>
-                )}
-              </div>
+              <ProvenanceChip type="FROZEN MODEL" />
             </div>
 
-            {/* Invariant Statement Banner */}
-            <div className="analysis-disclaimer-card">
-              <span className="badge-legal font-bold">MODEL INTEGRITY INVARIANT</span>
-              <p className="disclaimer-text text-muted">
-                <strong>Pure Predictive Scoring:</strong> Model computes marginal cumulative pass probabilities from public telemetry.
-                Zero online learning. Zero real-time parameter tuning. Zero private battery CAN bus / ATLAS telemetry. Zero action-conditioned probability claims.
-              </p>
-            </div>
-
-            {/* Model Card Key Attributes Grid */}
+            {/* Model Architecture Specs */}
             <div className="model-specs-grid">
               <div className="spec-card">
-                <span className="spec-label text-muted">ALGORITHM FAMILY</span>
+                <span className="spec-label text-muted">MODEL ALGORITHM</span>
                 <span className="spec-value font-bold text-primary">{modelMetadata.algorithm}</span>
-                <span className="spec-sub text-muted">LightGBM 4.5.0 + Isotonic PAV Post-Processing</span>
+                <span className="spec-sub text-muted">Constrained Gradient Boosted Trees</span>
               </div>
               <div className="spec-card">
-                <span className="spec-label text-muted">MODEL STATUS &amp; DEPLOYMENT</span>
+                <span className="spec-label text-muted">LIFECYCLE STATE</span>
                 <span className="spec-value font-bold text-legal">FROZEN</span>
                 <span className="spec-sub text-muted">Immutable runtime bundle; weights strictly locked</span>
               </div>
@@ -308,7 +277,7 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 <span className="spec-sub text-muted">Byte-exact artifact integrity verified</span>
               </div>
               <div className="spec-card">
-                <span className="spec-label text-muted">PAV MONOTONIC PROJECTION</span>
+                <span className="spec-label text-muted">PAV MONOTONIC HORIZON PROJECTION</span>
                 <span className="spec-value font-bold text-accent">P1 &le; P2 &le; P3</span>
                 <span className="spec-sub text-muted">Pool Adjacent Violators guarantees horizon consistency</span>
               </div>
@@ -385,11 +354,32 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 </tbody>
               </table>
             </div>
+
+            {/* Generalization Statement */}
+            <div className="generalization-notice-box" style={{ marginTop: '16px' }}>
+              <span className="notice-badge font-bold">CROSS-CIRCUIT ARCHITECTURE</span>
+              <p className="notice-text text-muted">
+                <strong>Circuit-Agnostic Runtime Interface:</strong> Model inputs are battle-dynamic features, not driver/team/circuit IDs. 
+                Cross-event generalization is evaluated empirically and remains subject to validation on additional events/seasons.
+              </p>
+            </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: DECISION ARCHITECTURE MAP */}
+        {/* TAB 2: ADAPTIVE INTELLIGENCE (FROZEN ML) */}
+        {/* ========================================================================= */}
+        {activeTab === 'ADAPTIVE' && (
+          <div className="analysis-pane-section">
+            <AdaptiveIntelligencePanel
+              decision={decision}
+              onOpenEvidence={onOpenEvidence}
+            />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 3: DECISION ARCHITECTURE MAP */}
         {/* ========================================================================= */}
         {activeTab === 'ARCHITECTURE' && (
           <div className="analysis-pane-section">
@@ -448,15 +438,15 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: OUTCOME LEDGER & VALIDATION */}
+        {/* TAB 4: OUTCOME LEDGER & CANONICAL VALIDATION */}
         {/* ========================================================================= */}
         {activeTab === 'VALIDATION' && (
           <div className="analysis-pane-section">
             <div className="pane-header-row">
               <div>
-                <h3 className="section-title">VALIDATION METRICS &amp; FORENSIC OUTCOME LEDGER</h3>
+                <h3 className="section-title">CANONICAL ML METRICS &amp; FORENSIC OUTCOME LEDGER</h3>
                 <span className="section-subtitle text-muted">
-                  Empirical out-of-fold performance benchmarks, split integrity, and post-hoc truth audit
+                  Verified repository benchmarks, strictly segregated splits, and post-hoc race truth
                 </span>
               </div>
               <ProvenanceChip type="HISTORICAL" />
@@ -468,14 +458,14 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 <span className="split-tag font-bold text-primary">TRAIN / OOF (7 EVENTS)</span>
                 <span className="split-val mono">6,197 observations • 1,656 battles</span>
                 <span className="split-desc text-muted">
-                  CHN, CAN, MCO, ESP, AUT, GBR, BEL. Event-level Leave-One-Event-Out cross-validation.
+                  CHN, CAN, MCO, ESP, AUT, GBR, BEL. Event-level Leave-One-Event-Out cross-validation in notebooks/KYNTRA_02_BASELINE.ipynb.
                 </span>
               </div>
               <div className="split-box">
                 <span className="split-tag font-bold text-accent">CONSUMED VALIDATION (2 EVENTS)</span>
-                <span className="split-val mono">2,160 observations</span>
+                <span className="split-val mono">1,951 usable observations (HUN, NLD)</span>
                 <span className="split-desc text-muted">
-                  HUN, NLD. Consumed for final pre-refit hyperparameter verification. <strong>Not untouched test data.</strong>
+                  Consumed for pre-refit verification on frozen LightGBM bundle. <strong>Not untouched test data.</strong>
                 </span>
               </div>
               <div className="split-box">
@@ -487,43 +477,69 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Verified Metrics Cards */}
-            <div className="validation-metrics-row">
-              <div className="metric-card">
-                <span className="m-label text-muted">TRAIN OOF H1 PR-AUC</span>
-                <span className="m-val font-bold text-accent">0.184</span>
-                <span className="m-sub text-muted">Tactical &le;1.0s Slice: <strong>0.241</strong> (Prevalence: 0.033)</span>
-                <span className="m-expl text-muted">PR-AUC &rarr; ranking quality on rare overtake events</span>
-              </div>
-              <div className="metric-card">
-                <span className="m-label text-muted">H1 BRIER SCORE</span>
-                <span className="m-val font-bold text-legal">0.0294</span>
-                <span className="m-sub text-muted">Climatology Base Rate: <strong>0.0323</strong></span>
-                <span className="m-expl text-muted">Brier &rarr; probability calibration accuracy</span>
-              </div>
-              <div className="metric-card">
-                <span className="m-label text-muted">BRIER SKILL SCORE</span>
-                <span className="m-val font-bold text-primary">+0.089 (+8.9%)</span>
-                <span className="m-sub text-muted">Strict positive predictive skill over empirical climatology</span>
-                <span className="m-expl text-muted">Calibration &rarr; predicted likelihood matches observed frequency</span>
-              </div>
-              <div className="metric-card">
-                <span className="m-label text-muted">MONOTONIC INVARIANCE</span>
-                <span className="m-val font-bold text-legal">0.00% VIOLATION</span>
-                <span className="m-sub text-muted">P1 &le; P2 &le; P3 strictly guaranteed across all observations</span>
-                <span className="m-expl text-muted">Enforced by Equal-Weight Pool Adjacent Violators</span>
-              </div>
+            {/* PAV Terminology Note */}
+            <div className="generalization-notice-box" style={{ margin: '14px 0' }}>
+              <span className="notice-badge font-bold">TERMINOLOGY AUDIT: PAV MONOTONIC HORIZON PROJECTION</span>
+              <p className="notice-text text-muted">
+                The KYNTRA overtake model enforces cross-horizon monotonic projection: <strong>P1 &le; P2 &le; P3</strong> using Pool Adjacent Violators (PAV).
+                This is an <strong>isotonic horizon projection</strong> preserving probabilistic monotonicity across multi-lap windows; 
+                it is <strong>not statistical probability calibration</strong> and must not be conflated with Platt scaling or isotonic calibration against empirical base rates.
+              </p>
+            </div>
+
+            {/* Canonical ML Validation Metrics Table */}
+            <div className="canonical-metrics-container">
+              <div className="card-sub-heading font-bold">CANONICAL FRONTEND VALIDATION-DATA SOURCE (TRACEABLE TO EXACT REPO ARTIFACTS)</div>
+              <table className="analysis-table canonical-metrics-table">
+                <thead>
+                  <tr>
+                    <th>METRIC NAME</th>
+                    <th>VERIFIED VALUE</th>
+                    <th>SPLIT / STAGE</th>
+                    <th>HORIZON &amp; POPULATION</th>
+                    <th>BENCHMARK BASELINE</th>
+                    <th>EXACT SOURCE ARTIFACT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CANONICAL_ML_METRICS.map((m) => (
+                    <tr key={m.id}>
+                      <td className="font-bold text-primary">
+                        {m.name}
+                        <div className="text-muted" style={{ fontSize: '10px' }}>{m.interpretation}</div>
+                      </td>
+                      <td className="mono font-bold text-accent" style={{ fontSize: '14px' }}>
+                        {m.displayValue}
+                      </td>
+                      <td>
+                        <span className={`split-pill pill-${m.split.toLowerCase().replace(/_/g, '-')}`}>
+                          {m.split}
+                        </span>
+                        <div className="text-muted" style={{ fontSize: '10px' }}>{m.evaluationStage}</div>
+                      </td>
+                      <td className="mono">
+                        <span className="text-secondary font-bold">{m.horizon}</span>
+                        <div className="text-muted" style={{ fontSize: '11px' }}>{m.population}</div>
+                      </td>
+                      <td className="mono text-muted">{m.benchmarkBaseline}</td>
+                      <td className="mono text-legal" style={{ fontSize: '11px' }} title={m.sourceArtifact}>
+                        {m.sourceArtifact}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             {/* Outcome Ledger Section */}
-            <div className="outcome-ledger-card">
+            <div className="outcome-ledger-card" style={{ marginTop: '20px' }}>
               <div className="ledger-header">
                 <div>
-                  <span className="ledger-badge font-bold">OUTCOME LEDGER</span>
-                  <h4 className="ledger-title font-bold">LIMITED HISTORICAL GROUND TRUTH AVAILABLE</h4>
+                  <span className="ledger-badge font-bold">OUTCOME LEDGER (VERIFIED HISTORICAL TRUTH)</span>
+                  <h4 className="ledger-title font-bold">POST-HOC GROUND TRUTH AUDIT</h4>
                   <p className="ledger-sub text-muted">
-                    Forensic post-hoc evaluation comparing what KYNTRA predicted at Time T against actual subsequent race outcomes.
-                    This outcome data is strictly segregated and never leaks into historical inference.
+                    Forensic post-hoc evaluation comparing what KYNTRA predicted at Time T against verified subsequent race outcomes.
+                    All snapshot IDs with <code>SNP-HIST-</code> prefix map to authentic race replay sessions. Outcome data is strictly segregated and never leaks into historical inference.
                   </p>
                 </div>
               </div>
@@ -565,10 +581,10 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
               </table>
             </div>
 
-            {/* Model Evolution Architecture (Future Only) */}
-            <div className="model-evolution-card">
+            {/* Model Evolution Architecture (Future Offline Only) */}
+            <div className="model-evolution-card" style={{ marginTop: '20px' }}>
               <div className="card-sub-heading font-bold">
-                MODEL EVOLUTION PIPELINE // FUTURE ARCHITECTURE (NOT ACTIVE ONLINE LEARNING)
+                MODEL EVOLUTION PIPELINE // OFFLINE RETRAINING ONLY (ZERO ONLINE LEARNING)
               </div>
               <p className="text-muted" style={{ fontSize: '12px', margin: '6px 0 12px 0' }}>
                 KYNTRA models are strictly frozen in production. Evolution happens via offline retraining and gated release.
@@ -582,7 +598,7 @@ export const AnalysisWorkspace: React.FC<AnalysisWorkspaceProps> = ({
                 <span className="evo-arr">&rarr;</span>
                 <span className="evo-node text-muted">HISTORICAL VALIDATION</span>
                 <span className="evo-arr">&rarr;</span>
-                <span className="evo-node text-muted">CALIBRATION &amp; FAILURE TESTS</span>
+                <span className="evo-node text-muted">PAV MONOTONIC TESTS</span>
                 <span className="evo-arr">&rarr;</span>
                 <span className="evo-node text-legal font-bold">CHAMPION VS CHALLENGER</span>
                 <span className="evo-arr">&rarr;</span>

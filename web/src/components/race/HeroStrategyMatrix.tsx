@@ -41,7 +41,8 @@ export const HeroStrategyMatrix: React.FC<HeroStrategyMatrixProps> = ({
 
   const actions = matrix.actions;
   const ranking = matrix.ranking;
-  const winnerAction = ranking?.winner || matrix.recommendation?.canonical_action;
+  const isTie = ranking?.winner === 'NO_DOMINANT_ACTION' || Boolean((ranking as any)?.is_tie);
+  const winnerAction = isTie ? null : (ranking?.winner || matrix.recommendation?.canonical_action);
 
   return (
     <div className="hero-matrix-panel">
