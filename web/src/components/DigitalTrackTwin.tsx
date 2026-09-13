@@ -540,7 +540,7 @@ export const DigitalTrackTwin: React.FC<DigitalTrackTwinProps> = ({
                   <g
                     key={car.driver}
                     transform={`translate(${coords.x}, ${coords.y})`}
-                    style={{ transition: 'transform 0.4s ease-out', cursor: 'pointer' }}
+                    style={{ cursor: 'pointer' }}
                     onClick={() => onSelectCar && onSelectCar(car.driver)}
                   >
                     {/* Attacker Target Ring (Restrained Red) */}

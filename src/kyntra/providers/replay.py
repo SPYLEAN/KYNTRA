@@ -52,7 +52,7 @@ class ReplayProvider(BaseDataProvider):
         self._laps: List[int] = []
         self._current_lap_idx: int = 0
         self._substep_idx: int = 0
-        self._substeps_per_lap: int = 5  # 5 progress ticks per lap for smooth tracking
+        self._substeps_per_lap: int = 80  # ~1.0s per substep for accurate 1:1 race time progression
         self._is_running: bool = False
         self._is_paused: bool = False
         self._playback_speed: float = 1.0
@@ -260,7 +260,7 @@ class ReplayProvider(BaseDataProvider):
             st = first_row["SessionTime"]
             session_time = float(st.total_seconds()) if hasattr(st, "total_seconds") else float(st)
         else:
-            session_time = float(current_lap * 82.5 + self._substep_idx * 16.5)
+            session_time = float(current_lap * 82.5 + self._substep_idx * (82.5 / max(1, self._substeps_per_lap)))
 
         # Track status: default green (1); check for safety car in telemetry if flagged
         track_status = "1"

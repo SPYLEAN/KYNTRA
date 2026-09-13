@@ -95,5 +95,8 @@ class KyntraRuntimeSnapshot(BaseModel):
     energy_availability: Dict[str, Any] = Field(default_factory=dict)
     model_identities: Dict[str, Any] = Field(default_factory=dict)
     decision_snapshot_id: Optional[str] = None
+    playback_rate: float = 1.0
+    is_paused: bool = False
+    source_time_s: Optional[float] = None
     health: RuntimeHealthSnapshot
     latencies: LatencyMetrics

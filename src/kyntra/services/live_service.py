@@ -166,10 +166,9 @@ class LiveRaceService:
                 self.provider = live_prov
                 self.event_id = live_prov.event_id
             except Exception as e:
-                logger.error(f"Failed to initialize OpenF1LiveProvider: {e}. Falling back to ReplayProvider.")
-                fallback_event = event_id or "2026_13_ITA"
-                self.event_id = fallback_event
-                self.provider = ReplayProvider(event_id=fallback_event)
+                logger.error(f"Failed to initialize OpenF1LiveProvider: {e}. Fail-closed to DisconnectedLiveProvider.")
+                from kyntra.providers.base import DisconnectedLiveProvider
+                self.provider = DisconnectedLiveProvider(reason="LIVE PROVIDER NOT CONNECTED")
         elif provider_type == "CAPTURED_LIVE" and capture_path:
             self.provider = ReplayProvider(capture_path=capture_path)
             self.event_id = f"capture_{Path(capture_path).stem}"
@@ -235,15 +234,24 @@ class LiveRaceService:
 
     def _run_loop(self) -> None:
         """Continuous background tick loop."""
+        last_t = None
         while self._is_running:
+            if getattr(self.provider, "_is_paused", False):
+                time.sleep(0.1)
+                continue
             try:
-                # Adjust sleep based on playback speed (base ~0.5s per step at 1x)
-                capabilities = self.provider.get_capabilities()
+                payload = self.step()
+                curr_t = payload.get("timestamp") if payload else None
+                if curr_t is not None and last_t is not None:
+                    dt = curr_t - last_t
+                    if dt <= 0 or dt > 5.0:
+                        dt = 1.0
+                else:
+                    dt = 1.0
+                last_t = curr_t
                 speed = getattr(self.provider, "_playback_speed", 1.0)
-                sleep_interval = max(0.05, 0.4 / max(0.1, speed))
-
-                self.step()
-                time.sleep(sleep_interval)
+                interval = max(0.05, min(5.0, dt / max(0.1, speed)))
+                time.sleep(interval)
             except Exception:
                 time.sleep(0.5)
 

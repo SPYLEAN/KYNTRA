@@ -65,9 +65,12 @@ export const AppShell: React.FC<AppShellProps> = ({
   const runtimeMode = runtimeSnapshot?.mode || (operatingMode === 'REPLAY' ? 'HISTORICAL_REPLAY' : 'LIVE_FEED');
 
   const sourceProvider =
-    runtimeSnapshot?.provider_status?.['provider'] ||
-    raceState?.session.provider ||
-    'OPENF1';
+    operatingMode === 'REPLAY' || runtimeSnapshot?.mode === 'HISTORICAL_REPLAY'
+      ? 'HISTORICAL_REPLAY'
+      : (runtimeSnapshot?.provider_status?.provider_type ||
+         runtimeSnapshot?.provider_status?.name ||
+         raceState?.session.provider ||
+         (operatingMode === 'LIVE' ? 'OPENF1_LIVE' : 'OPENF1'));
   const systemHealth: SystemHealthStatus =
     runtimeSnapshot?.health.system_health || 'OPERATIONAL';
 
@@ -117,12 +120,15 @@ export const AppShell: React.FC<AppShellProps> = ({
             <ReplayControlBar
               currentLap={currentLap}
               totalLaps={totalLaps}
-              sessionTime={(raceState?.session as any)?.elapsed_time ?? (currentLap * 82.5)}
-              isPaused={false}
-              playbackSpeed={1.0}
+              sessionTime={runtimeSnapshot?.source_time_s ?? (raceState?.session as any)?.elapsed_time ?? (currentLap * 82.5)}
+              isPaused={runtimeSnapshot?.is_paused ?? false}
+              playbackSpeed={runtimeSnapshot?.playback_rate ?? 1.0}
               eventId={runtimeSnapshot?.event_id || raceState?.session.event_id || '2026_13_ITA'}
               sourceMode="HISTORICAL_REPLAY"
-              onPlayPause={() => onSendCommand && onSendCommand({ action: 'pause' })}
+              onPlayPause={() =>
+                onSendCommand &&
+                onSendCommand({ action: runtimeSnapshot?.is_paused ? 'resume' : 'pause' })
+              }
               onStepForward={() => onSendCommand && onSendCommand({ action: 'step' })}
               onStepBack={() => onSendCommand && onSendCommand({ action: 'seek', lap: Math.max(1, currentLap - 1) })}
               onSeekLap={(lap) => onSendCommand && onSendCommand({ action: 'seek', lap })}

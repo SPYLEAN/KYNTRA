@@ -82,7 +82,8 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
   const [activeWindows, setActiveWindows] = useState<Record<string, WindowState>>({});
   const [recentEvents, setRecentEvents] = useState<RaceEvent[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
-  const [operatingMode, setOperatingMode] = useState<OperatingMode>('REPLAY');
+  const [operatingMode, setOperatingModeState] = useState<OperatingMode>('REPLAY');
+  const userExplicitModeRef = useRef<OperatingMode | null>(null);
   const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
 
   // Connection & Diagnostics
@@ -124,12 +125,29 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
     return rawConnectionStatus;
   })();
 
-  // Synchronous command sender via WebSocket or REST fallback
+  // Synchronous command sender via WebSocket with guaranteed REST dispatch
   const sendCommand = useCallback((payload: any) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(payload));
+      try {
+        wsRef.current.send(JSON.stringify(payload));
+      } catch (e) {
+        // ws write failed
+      }
     }
+    KyntraApiClient.sendRuntimeControl(payload).catch(() => {
+      // REST dispatch handled
+    });
   }, []);
+
+  // Mode selection handler
+  const setOperatingMode = useCallback(
+    (mode: OperatingMode) => {
+      userExplicitModeRef.current = mode;
+      setOperatingModeState(mode);
+      sendCommand({ action: 'set_mode', mode });
+    },
+    [sendCommand]
+  );
 
   // Battle selection handler
   const selectBattle = useCallback(
@@ -186,10 +204,12 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
         setLatencyMs(responseTimeMs);
       }
 
-      if (snap.mode === 'HISTORICAL_REPLAY') {
-        setOperatingMode('REPLAY');
-      } else if (snap.mode === 'LIVE_FEED') {
-        setOperatingMode('LIVE');
+      if (!userExplicitModeRef.current) {
+        if (snap.mode === 'HISTORICAL_REPLAY') {
+          setOperatingModeState('REPLAY');
+        } else if (snap.mode === 'LIVE_FEED') {
+          setOperatingModeState('LIVE');
+        }
       }
 
       if (snap.active_battles && snap.active_battles.length > 0) {

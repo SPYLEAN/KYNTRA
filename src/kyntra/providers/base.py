@@ -84,3 +84,45 @@ class BaseDataProvider(ABC):
     def get_capabilities(self) -> ProviderCapabilities:
         """Return provider feature flags and capabilities."""
         pass
+
+
+class DisconnectedLiveProvider(BaseDataProvider):
+    """Fail-closed provider representing an unavailable live telemetry feed."""
+
+    def __init__(self, reason: str = "LIVE PROVIDER NOT CONNECTED"):
+        self.reason = reason
+        self._is_running = False
+
+    def start(self) -> None:
+        self._is_running = True
+
+    def stop(self) -> None:
+        self._is_running = False
+
+    def next_state(self) -> Optional[RaceState]:
+        return None
+
+    def seek(self, lap: int) -> bool:
+        return False
+
+    def pause(self) -> None:
+        pass
+
+    def resume(self) -> None:
+        pass
+
+    def set_speed(self, speed: float) -> None:
+        pass
+
+    def get_metadata(self) -> ProviderMetadata:
+        return ProviderMetadata(
+            name="OpenF1 Live Provider (Disconnected)",
+            provider_type="OPENF1_LIVE",
+            source_identifier="openf1.org/api",
+            provenance="NONE (DISCONNECTED)",
+            source_mode="LIVE_FEED",
+            details={"status": "LIVE_PROVIDER_NOT_CONNECTED", "reason": self.reason},
+        )
+
+    def get_capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(is_live=True)

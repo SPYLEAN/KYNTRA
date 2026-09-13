@@ -160,6 +160,29 @@ export const EnergyHorizonPanel: React.FC<EnergyHorizonPanelProps> = ({
         </div>
       </div>
 
+      {!actions && (
+        <div
+          style={{
+            margin: '8px 16px 0 16px',
+            padding: '6px 12px',
+            background: 'rgba(51, 65, 85, 0.4)',
+            border: '1px solid #475569',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '11px',
+          }}
+        >
+          <span style={{ color: '#94a3b8', fontWeight: 600 }}>
+            {availEnergyMj != null
+              ? 'RETAINED SIMULATION BASELINE — NO ACTIVE BATTLE SELECTED'
+              : 'NO ACTIVE DECISION CONTEXT'}
+          </span>
+          <span style={{ color: '#64748b', fontFamily: 'monospace' }}>STANDBY</span>
+        </div>
+      )}
+
       {/* 2. Four Action Selector for Quick Energy Comparison */}
       <div className="action-energy-toggle-strip mono" role="tablist" aria-label="Action Energy Comparison">
         {ACTION_MAP.map((act) => {

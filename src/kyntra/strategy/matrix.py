@@ -195,7 +195,7 @@ def generate_strategy_matrix(
         decision_time=now_iso,
         state_age_ms=0.0,
         freshness_status="FRESH",
-        session_key=race_data.get("session_key"),
+        session_key=str(race_data["session_key"]) if race_data.get("session_key") is not None else None,
         lap_number=lap,
         attacker=attacker,
         defender=defender,

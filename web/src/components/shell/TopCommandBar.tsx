@@ -50,14 +50,15 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   // Canonical Source Mode
   const sourceMode = runtimeSnapshot?.mode || (operatingMode === 'REPLAY' ? 'HISTORICAL_REPLAY' : 'LIVE_FEED');
 
-  // Contradiction A1 Fix: Canonical Operating Mode alignment
-  // If backend source is HISTORICAL_REPLAY and user has not forced FORECAST, mode is canonically REPLAY
-  const canonicalMode: OperatingMode =
-    operatingMode === 'FORECAST'
-      ? 'FORECAST'
-      : sourceMode === 'HISTORICAL_REPLAY'
-      ? 'REPLAY'
-      : 'LIVE';
+  // Real operating controls: canonicalMode is directly user-selected operatingMode
+  const canonicalMode: OperatingMode = operatingMode;
+
+  // LIVE provider availability guard: fail-closed, no fake telemetry
+  const isLiveDisconnected =
+    canonicalMode === 'LIVE' &&
+    (runtimeSnapshot?.provider_status?.details?.status === 'LIVE_PROVIDER_NOT_CONNECTED' ||
+      runtimeSnapshot?.provider_status?.status === 'LIVE_PROVIDER_NOT_CONNECTED' ||
+      (runtimeSnapshot?.mode !== 'LIVE_FEED' && !runtimeSnapshot?.provider_status?.is_live));
 
   // Contradiction A4 Fix: System Health Resolution (handling coarse DEGRADED -> NON-BLOCKING)
   const rawHealth: SystemHealthStatus = (runtimeSnapshot?.health?.system_health as any) || 'OPERATIONAL';
@@ -107,12 +108,34 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
                 onClick={() => onSelectOperatingMode(m)}
                 title={`Switch to ${m} Mode`}
               >
-                {m === 'LIVE' && isActive && <span className="mode-live-dot" />}
+                {m === 'LIVE' && isActive && !isLiveDisconnected && <span className="mode-live-dot" />}
                 <span>{m}</span>
               </button>
             );
           })}
         </div>
+
+        {isLiveDisconnected && (
+          <div
+            className="live-provider-disconnected-pill"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid #ef4444',
+              color: '#f87171',
+              padding: '3px 10px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#ef4444' }} />
+            LIVE PROVIDER NOT CONNECTED
+          </div>
+        )}
 
         {/* Session Telemetry Context */}
         <div className="session-context-group">

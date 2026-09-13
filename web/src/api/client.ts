@@ -87,6 +87,8 @@ export class KyntraApiClient {
     lap?: number;
     speed?: number;
     battle_id?: string;
+    event_id?: string;
+    mode?: string;
   }): Promise<{ status: string; [key: string]: any }> {
     try {
       const res = await fetch(`${this.baseUri}/api/runtime/control`, {

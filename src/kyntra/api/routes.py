@@ -681,10 +681,12 @@ def evaluate_publication_and_decision(req: DecisionRequest) -> Dict[str, Any]:
 
 class RuntimeControlRequest(BaseModel):
     """Payload for runtime replay and battle selection controls."""
-    action: str = Field(..., description="Control action: start | pause | resume | seek | speed | select_battle | step")
+    action: str = Field(..., description="Control action: start | pause | resume | seek | speed | select_battle | step | set_event | set_mode")
     lap: Optional[int] = None
     speed: Optional[float] = None
     battle_id: Optional[str] = None
+    event_id: Optional[str] = None
+    mode: Optional[str] = None
 
 
 class FailureInjectionRequest(BaseModel):
@@ -701,13 +703,16 @@ class FailureInjectionRequest(BaseModel):
 @router.get("/runtime")
 def get_canonical_runtime_snapshot() -> Dict[str, Any]:
     """Retrieve the canonical single-source-of-truth KyntraRuntimeSnapshot."""
+    import time
     from kyntra.runtime import get_runtime_orchestrator
 
     orchestrator = get_runtime_orchestrator()
     snap = orchestrator.get_current_snapshot()
     if snap is None:
-        # Step once to initialize state if idle
         snap = orchestrator.step()
+    if snap is None:
+        time.sleep(0.1)
+        snap = orchestrator.get_current_snapshot() or orchestrator.step()
     if snap is None:
         raise HTTPException(status_code=503, detail="Runtime orchestrator state is not yet initialized.")
     return snap.model_dump()
@@ -796,6 +801,21 @@ def control_runtime_replay(req: RuntimeControlRequest) -> Dict[str, Any]:
     elif action == "step":
         snap = orchestrator.step()
         return {"status": "SUCCESS", "lap": snap.current_lap if snap else None}
+    elif action == "set_event":
+        if not req.event_id:
+            raise HTTPException(status_code=400, detail="Missing required 'event_id' parameter.")
+        orchestrator.set_event(req.event_id)
+        from kyntra.services.live_service import get_live_race_service
+        try:
+            get_live_race_service().set_event(req.event_id)
+        except Exception:
+            pass
+        return {"status": "SUCCESS", "event_id": req.event_id}
+    elif action == "set_mode":
+        if not req.mode:
+            raise HTTPException(status_code=400, detail="Missing required 'mode' parameter.")
+        orchestrator.set_mode(req.mode)
+        return {"status": "SUCCESS", "mode": req.mode}
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported control action '{req.action}'.")
 

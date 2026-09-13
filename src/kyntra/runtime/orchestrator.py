@@ -160,11 +160,15 @@ class KyntraRuntimeOrchestrator:
     def pause(self) -> None:
         with self._lock:
             self._is_paused = True
+            if self._current_snapshot:
+                self._current_snapshot.is_paused = True
             self._broadcast("provider.status.changed", {"status": "PAUSED", "mode": self.mode.value})
 
     def resume(self) -> None:
         with self._lock:
             self._is_paused = False
+            if self._current_snapshot:
+                self._current_snapshot.is_paused = False
             self._broadcast("provider.status.changed", {"status": "RUNNING", "mode": self.mode.value})
 
     def stop(self) -> None:
@@ -190,8 +194,52 @@ class KyntraRuntimeOrchestrator:
     def set_speed(self, speed: float) -> None:
         with self._lock:
             self._playback_speed = max(0.1, min(10.0, speed))
+            if self._current_snapshot:
+                self._current_snapshot.playback_rate = self._playback_speed
             if hasattr(self.provider, "set_speed"):
                 self.provider.set_speed(self._playback_speed)
+
+    def set_event(self, event_id: str) -> None:
+        with self._lock:
+            if hasattr(self.provider, "stop"):
+                self.provider.stop()
+            self.event_id = event_id
+            self.provider = ReplayProvider(event_id=event_id)
+            self.provider.start()
+            self._last_processed_timestamp = None
+            self._last_lap = None
+            self._last_track_status = None
+            self._known_battle_ids.clear()
+            self.battle_manager.clear()
+        self.step()
+
+    def set_mode(self, mode_str: str) -> None:
+        clean = mode_str.upper().strip()
+        with self._lock:
+            if clean in ["REPLAY", "HISTORICAL_REPLAY"]:
+                self.mode = RuntimeMode.HISTORICAL_REPLAY
+                if not isinstance(self.provider, ReplayProvider):
+                    if hasattr(self.provider, "stop"):
+                        self.provider.stop()
+                    self.provider = ReplayProvider(event_id=self.event_id)
+                    self.provider.start()
+            elif clean in ["LIVE", "LIVE_FEED"]:
+                self.mode = RuntimeMode.LIVE_FEED
+                try:
+                    from kyntra.providers.openf1_live import OpenF1LiveProvider
+                    live_p = OpenF1LiveProvider()
+                    self.provider = live_p
+                    self.provider.start()
+                except Exception:
+                    # Fail-closed: Never fake live data, never silently fall back to replay
+                    from kyntra.providers.base import DisconnectedLiveProvider
+                    if hasattr(self.provider, "stop"):
+                        self.provider.stop()
+                    self.provider = DisconnectedLiveProvider(reason="LIVE PROVIDER NOT CONNECTED")
+            elif clean in ["FORECAST", "REANALYSIS"]:
+                self.mode = RuntimeMode.REANALYSIS
+                # Retains genuine observed decision snapshot for predictive/counterfactual intelligence
+        self.step()
 
     def select_battle(self, battle_id: Optional[str]) -> bool:
         with self._lock:
@@ -202,14 +250,27 @@ class KyntraRuntimeOrchestrator:
         return success
 
     def _run_loop(self) -> None:
+        last_source_time: Optional[float] = None
         while self._is_running:
-            if not self._is_paused:
-                try:
-                    self.step()
-                except Exception as e:
-                    logger.error(f"Runtime loop execution step failed: {e}")
-            interval = max(0.05, 0.4 / max(0.1, self._playback_speed))
-            time.sleep(interval)
+            if self._is_paused:
+                time.sleep(0.1)
+                continue
+            try:
+                snap = self.step()
+                curr_source_time = snap.source_time_s if snap else None
+                if curr_source_time is not None and last_source_time is not None:
+                    dt = curr_source_time - last_source_time
+                    if dt <= 0 or dt > 5.0:
+                        dt = 1.0
+                else:
+                    dt = 1.0
+                last_source_time = curr_source_time
+                # At 1.0x: 1s source time ~= 1s wall-clock time
+                interval = max(0.05, min(5.0, dt / max(0.1, self._playback_speed)))
+                time.sleep(interval)
+            except Exception as e:
+                logger.error(f"Runtime loop execution step failed: {e}")
+                time.sleep(0.5)
 
     # --------------------------------------------------------------------------
     # Health Model Helpers
@@ -268,14 +329,15 @@ class KyntraRuntimeOrchestrator:
         if race_state is None:
             return self._current_snapshot
 
-        # Deduplication and timestamp ordering check
-        if self._last_processed_timestamp is not None:
-            if race_state.timestamp < self._last_processed_timestamp:
-                logger.warning("Rejected out-of-order telemetry packet.")
-                return self._current_snapshot
-            if race_state.timestamp == self._last_processed_timestamp:
-                # Coalesce duplicate packet
-                return self._current_snapshot
+        # Deduplication and timestamp ordering check (within current lap)
+        if self._last_processed_timestamp is not None and self._current_snapshot is not None:
+            if self._last_lap is not None and race_state.session.current_lap == self._last_lap:
+                if race_state.timestamp < self._last_processed_timestamp:
+                    logger.warning("Rejected out-of-order telemetry packet.")
+                    return self._current_snapshot
+                if race_state.timestamp == self._last_processed_timestamp:
+                    # Coalesce duplicate packet
+                    return self._current_snapshot
 
         self._last_processed_timestamp = race_state.timestamp
         self.state_store.update_race_state(race_state)
@@ -378,9 +440,12 @@ class KyntraRuntimeOrchestrator:
         extra_age = self.failure_injector.extra_telemetry_age_s
         state_age_ms = (extra_age * 1000.0) if extra_age > 0 else 120.0
 
+        sk = getattr(self.provider, "session_key", None)
+        session_key_str = str(sk) if sk is not None else None
+
         race_data = {
             "event_id": self.event_id,
-            "session_key": getattr(self.provider, "session_key", None),
+            "session_key": session_key_str,
             "event_name": race_state.session.event_name,
             "lap": current_lap,
             "event_time": datetime.now(timezone.utc).isoformat(),
@@ -526,7 +591,7 @@ class KyntraRuntimeOrchestrator:
             runtime_id=self.runtime_id,
             mode=self.mode,
             event_id=self.event_id,
-            session_key=getattr(self.provider, "session_key", None),
+            session_key=session_key_str,
             current_lap=current_lap,
             source_timestamps={
                 "event_time": race_data.get("event_time"),
@@ -559,6 +624,9 @@ class KyntraRuntimeOrchestrator:
                 "publication_config_version": self.publication_config.version,
             },
             decision_snapshot_id=dec_snap.decision_id,
+            playback_rate=self._playback_speed,
+            is_paused=self._is_paused,
+            source_time_s=float(t_stamp) if t_stamp is not None else None,
             health=health_snap,
             latencies=self._latest_latencies,
         )
@@ -582,4 +650,5 @@ def get_runtime_orchestrator() -> KyntraRuntimeOrchestrator:
     global _GLOBAL_RUNTIME_ORCHESTRATOR
     if _GLOBAL_RUNTIME_ORCHESTRATOR is None:
         _GLOBAL_RUNTIME_ORCHESTRATOR = KyntraRuntimeOrchestrator()
+        _GLOBAL_RUNTIME_ORCHESTRATOR.start()
     return _GLOBAL_RUNTIME_ORCHESTRATOR

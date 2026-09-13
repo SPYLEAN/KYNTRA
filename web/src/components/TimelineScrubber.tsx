@@ -26,7 +26,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   onStep,
   markers = [],
 }) => {
-  const speeds = [0.5, 1.0, 2.0, 5.0, 10.0];
+  const speeds = [0.5, 1.0, 2.0, 4.0];
 
   const formatTime = (seconds?: number | null) => {
     if (seconds === undefined || seconds === null) return '--:--';
@@ -53,7 +53,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
         </button>
 
         <div className="speed-selector">
-          <span className="label">SPEED:</span>
+          <span className="label">PLAYBACK RATE:</span>
           {speeds.map((s) => (
             <button
               key={s}
@@ -72,7 +72,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
             LAP {currentLap} / {totalLaps}
           </span>
           <span className="session-time mono text-muted">
-            ELAPSED: {formatTime(sessionTime)}
+            SOURCE TIME: {formatTime(sessionTime)}
           </span>
         </div>
 

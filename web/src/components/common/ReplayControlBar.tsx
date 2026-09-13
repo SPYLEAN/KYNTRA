@@ -75,7 +75,7 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
 
         {/* Speed Selector */}
         <div className="replay-speed-group mono">
-          <span className="speed-lbl text-muted">SPEED:</span>
+          <span className="speed-lbl text-muted">PLAYBACK RATE:</span>
           {speeds.map((s) => (
             <button
               key={s}
@@ -123,7 +123,7 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
           <span className="h-val font-bold text-primary">{currentLap} / {totalLaps}</span>
         </div>
         <div className="hud-metric">
-          <span className="h-lbl text-muted">ELAPSED:</span>
+          <span className="h-lbl text-muted">SOURCE TIME:</span>
           <span className="h-val text-secondary font-bold">{formatTime(sessionTime)}</span>
         </div>
       </div>

@@ -540,6 +540,9 @@ export interface KyntraRuntimeSnapshot {
   energy_availability: Record<string, any>;
   model_identities: Record<string, any>;
   decision_snapshot_id?: string | null;
+  playback_rate?: number;
+  is_paused?: boolean;
+  source_time_s?: number | null;
   health: RuntimeHealthSnapshot;
   latencies: LatencyMetrics;
 }
