@@ -194,6 +194,12 @@ export const JudgeModeTour: React.FC<JudgeModeTourProps> = ({
 
         {/* Navigation Controls */}
         <div className="judge-controls-group">
+          <span className="judge-kbd-hint" title="Keyboard navigation available">
+            <kbd>&larr;</kbd>
+            <kbd>&rarr;</kbd>
+            <kbd>ESC</kbd>
+          </span>
+
           <button
             type="button"
             className="judge-btn judge-prev-btn"
@@ -225,7 +231,7 @@ export const JudgeModeTour: React.FC<JudgeModeTourProps> = ({
             onClick={onClose}
             title="Exit Judge Mode [ESC]"
           >
-            EXIT
+            &#x2715; EXIT
           </button>
         </div>
       </div>

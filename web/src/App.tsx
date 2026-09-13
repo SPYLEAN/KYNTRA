@@ -244,6 +244,15 @@ export default function App() {
       onToggleCopilot={() => setCopilotActive((prev) => !prev)}
       onSendCommand={sendCommand}
     >
+      {/* 10-Step Guided Judge Mode Tour - Docked at the top of the workstation viewport */}
+      <JudgeModeTour
+        isActive={judgeModeActive}
+        currentStepIndex={judgeStepIndex}
+        onStepChange={setJudgeStepIndex}
+        onClose={() => setJudgeModeActive(false)}
+        onNavigateWorkspace={setCurrentContext}
+      />
+
       {operatingMode === 'FORECAST' && <div className="astra-mode-notice"><b>FORECAST</b> Comparing futures from the retained observed DecisionSnapshot · no future telemetry generated</div>}
       {/* Dynamic Viewport Content */}
       {liveDisconnected ? <div className="astra-empty astra-live-disconnected"><span className="astra-eyebrow">LIVE / PROVIDER STATUS</span><h1>LIVE PROVIDER NOT CONNECTED</h1><p>Connect an authorized live provider to receive current race state.</p><p>Historical replay is available from the mode selector.</p></div> : currentContext === 'RACE' ? (
@@ -394,15 +403,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* 10-Step Guided Judge Mode Tour */}
-      <JudgeModeTour
-        isActive={judgeModeActive}
-        currentStepIndex={judgeStepIndex}
-        onStepChange={setJudgeStepIndex}
-        onClose={() => setJudgeModeActive(false)}
-        onNavigateWorkspace={setCurrentContext}
-      />
 
       {/* Structured KYNTRA Copilot */}
       <StructuredCopilot
