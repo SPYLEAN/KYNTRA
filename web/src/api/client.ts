@@ -17,6 +17,15 @@ import type {
 export class KyntraApiClient {
   private static baseUri = '';
 
+  static async getDecisionSnapshot(id: string): Promise<DecisionSnapshot | null> {
+    try {
+      const res = await fetch(this.baseUri + '/api/decision/' + encodeURIComponent(id));
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * 1. Get canonical runtime snapshot from Phase 10 orchestrator.
    */
@@ -99,7 +108,16 @@ export class KyntraApiClient {
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
-      return await res.json();
+      const result = await res.json();
+      // These routes own separate providers: runtime decisions and spatial replay.
+      // set_event already updates both on the server; dispatch it only once.
+      if (result.status === 'SUCCESS' && ['pause','resume','seek','speed','select_battle','step'].includes(payload.action)) {
+        const timing = await fetch(this.baseUri + '/api/replay/control', {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
+        });
+        if (!timing.ok) throw new Error('Timing replay control failed: HTTP ' + timing.status);
+      }
+      return result;
     } catch (err) {
       console.error('[KYNTRA API] Control command failed:', err);
       return { status: 'ERROR', message: String(err) };

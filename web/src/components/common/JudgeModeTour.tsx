@@ -34,7 +34,7 @@ export const JUDGE_STEPS: JudgeStep[] = [
     stepIndex: 2,
     totalSteps: 10,
     headline: 'DATA — Public race state feeds tactical pairing.',
-    sentence: 'KYNTRA ingests public telemetry intervals to track battles within 3.0s and extract 5 battle dynamics features without driver or circuit bias.',
+    sentence: 'KYNTRA ingests public telemetry intervals to track battles within 3.0s and extract 5 battle dynamics features without driver or circuit identifiers.',
     targetWorkspace: 'RACE',
     targetHighlight: 'battle-watchlist',
   },
@@ -52,7 +52,7 @@ export const JUDGE_STEPS: JudgeStep[] = [
     stepIndex: 4,
     totalSteps: 10,
     headline: 'WATCH IT ADAPT — Same frozen model, changing race dynamics.',
-    sentence: 'As battle dynamics evolve (gap closes from 1.28s to 0.64s, closing rate accelerates), inference updates instantaneously without online retraining.',
+    sentence: 'Compare two captured snapshots. Changing inputs produce new inference with the same model hash; no online retraining.',
     targetWorkspace: 'ANALYSIS',
     targetHighlight: 'adaptive-panel',
   },
@@ -70,7 +70,7 @@ export const JUDGE_STEPS: JudgeStep[] = [
     stepIndex: 6,
     totalSteps: 10,
     headline: 'FOUR FUTURES — Counterfactual evaluation across 4 discrete actions.',
-    sentence: 'Every cycle evaluates SAVE ENERGY, PREPARE, APPLY PRESSURE, and OVERTAKE NOW across expected lap time cost and post-pass re-pass risk.',
+    sentence: 'Inspect four configured futures and their reported energy, timing, and ordinal stability evidence. Unavailable consequences stay unknown.',
     targetWorkspace: 'STRATEGY',
     targetHighlight: 'strategy-matrix',
   },
@@ -79,7 +79,7 @@ export const JUDGE_STEPS: JudgeStep[] = [
     stepIndex: 7,
     totalSteps: 10,
     headline: 'DECISION — Published KYNTRA Call with 7-point publication gate.',
-    sentence: 'Lexicographic ranking combined with state transition hysteresis ensures published calls are authoritative, actionable, and free of jitter.',
+    sentence: 'Lexicographic ranking combined with state transition hysteresis separates the ranking candidate from the published instruction.',
     targetWorkspace: 'RACE',
     targetHighlight: 'call-banner',
   },
@@ -97,7 +97,7 @@ export const JUDGE_STEPS: JudgeStep[] = [
     stepIndex: 9,
     totalSteps: 10,
     headline: 'PROVE IT — Universal Evidence Drawer with cryptographic provenance.',
-    sentence: 'Every displayed probability, metric, and regulation rule connects to verified source artifacts, training runs, and replay evidence.',
+    sentence: 'Inspect the recorded evidence and distinguish known outcomes from unavailable post-moment data.',
     targetWorkspace: 'ANALYSIS',
     targetHighlight: 'outcome-ledger',
   },
@@ -105,8 +105,8 @@ export const JUDGE_STEPS: JudgeStep[] = [
     number: '10',
     stepIndex: 10,
     totalSteps: 10,
-    headline: 'SYSTEM TRUST — Deterministic reliability, verified resilience, zero hallucinations.',
-    sentence: 'Explicit handling for stale telemetry, unknown rules, and ties guarantees dependable pit-wall operations with zero LLM guesswork.',
+    headline: 'SYSTEM TRUST — Canonical health and reported subsystem evidence.',
+    sentence: 'Inspect actual module health, freshness, and provenance. Degraded services and unknown evidence remain visible.',
     targetWorkspace: 'SYSTEM',
     targetHighlight: 'system-matrix',
   },
@@ -123,9 +123,21 @@ export const JudgeModeTour: React.FC<JudgeModeTourProps> = ({
 
   // Navigate workspace whenever step changes
   useEffect(() => {
-    if (isActive && currentStep) {
-      onNavigateWorkspace(currentStep.targetWorkspace);
-    }
+    if (!isActive) return;
+    onNavigateWorkspace(currentStep.targetWorkspace);
+    document.documentElement.dataset.judgeActive = 'true';
+    const focus = () => {
+      document.querySelectorAll('.astra-spotlight').forEach(node => node.classList.remove('astra-spotlight'));
+      const target = document.querySelector('[data-spotlight="' + currentStep.targetHighlight + '"]');
+      target?.classList.add('astra-spotlight');
+      target?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    };
+    const timer = setTimeout(focus, 150);
+    return () => {
+      clearTimeout(timer);
+      delete document.documentElement.dataset.judgeActive;
+      document.querySelectorAll('.astra-spotlight').forEach(node => node.classList.remove('astra-spotlight'));
+    };
   }, [isActive, currentStepIndex, currentStep, onNavigateWorkspace]);
 
   // Keyboard navigation: ArrowLeft (back), ArrowRight (next), Escape (close)

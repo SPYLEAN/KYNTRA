@@ -95,6 +95,15 @@ def load_demo_replay(event_id: str) -> pd.DataFrame:
     return _REPLAY_CACHE[event_id]
 
 
+def warm_replay_cache() -> None:
+    """Pre-load all replay parquet files into memory so switching events is instantaneous."""
+    for ev_id in EVENT_INFO.keys():
+        try:
+            load_demo_replay(ev_id)
+        except Exception:
+            pass
+
+
 def get_available_events() -> List[Dict[str, Any]]:
     """Get metadata for all demo replay events."""
     events = []

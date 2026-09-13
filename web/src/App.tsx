@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import type {
+  DecisionSnapshot,
   ContextWorkspace,
   EvidenceInspectionTarget,
   TrackGeometry,
@@ -11,8 +12,9 @@ import { EventsWorkspace } from './components/workspaces/EventsWorkspace';
 import { AnalysisWorkspace } from './components/workspaces/AnalysisWorkspace';
 import { SystemWorkspace } from './components/workspaces/SystemWorkspace';
 import { SessionSwitcher } from './components/SessionSwitcher';
-import { JudgeModeTour } from './components/common/JudgeModeTour';
+import { JUDGE_STEPS, JudgeModeTour } from './components/common/JudgeModeTour';
 import { StructuredCopilot } from './components/common/StructuredCopilot';
+import { sameBattle } from './domain/presentation';
 import { KyntraApiClient } from './api/client';
 import { useRuntimeStream } from './hooks/useRuntimeStream';
 
@@ -61,11 +63,26 @@ export default function App() {
     sendCommand,
   } = useRuntimeStream(activeEventId);
 
+  const [observedHistory, setObservedHistory] = useState<DecisionSnapshot[]>([]);
+  useEffect(() => {
+    if (!decision || !decision.decision_id || operatingMode === 'LIVE' && runtimeSnapshot?.mode !== 'LIVE_FEED') return;
+    setObservedHistory(prev => {
+      const latest = prev[0];
+      const reset = !sameBattle(decision, latest) || (latest?.race.lap != null && decision.race.lap != null && decision.race.lap < latest.race.lap) || (decision.race.replay_time != null && latest?.race.replay_time != null && decision.race.replay_time < latest.race.replay_time);
+      if (reset) return [decision];
+      if (latest?.decision_id === decision.decision_id) return prev;
+      return [decision, ...prev].slice(0, 60);
+    });
+  }, [decision, operatingMode, runtimeSnapshot?.mode]);
+  const previousDecision = observedHistory.find(d => d.decision_id !== decision?.decision_id && sameBattle(d, decision)) || null;
+  const judgeFocus = judgeModeActive ? JUDGE_STEPS[judgeStepIndex]?.targetHighlight : undefined;
+  const liveDisconnected = operatingMode === 'LIVE' && (runtimeSnapshot?.mode !== 'LIVE_FEED' || raceState?.session.source_mode !== 'LIVE_FEED' || decision?.provenance.source_mode !== 'LIVE_FEED' || runtimeSnapshot?.provider_status?.details?.status === 'LIVE_PROVIDER_NOT_CONNECTED');
   const eventId = runtimeSnapshot?.event_id || raceState?.session.event_id || activeEventId;
 
   // 2. Fetch Track Geometry when event changes
   useEffect(() => {
     let isMounted = true;
+    setTrackGeometry(null);
     KyntraApiClient.getTrackGeometry(eventId).then((geo) => {
       if (isMounted && geo) setTrackGeometry(geo);
     });
@@ -77,13 +94,14 @@ export default function App() {
   // 3. Historical decision logs for Timeline
   useEffect(() => {
     let isMounted = true;
-    KyntraApiClient.getRuntimeHistory(undefined, 20).then((hist) => {
-      if (isMounted && hist) setDecisionHistory(hist);
-    });
+    const refresh = () => KyntraApiClient.getRuntimeHistory(undefined, 60).then(hist => { if (isMounted) setDecisionHistory(hist); });
+    refresh();
+    const timer = setInterval(refresh, 5000);
     return () => {
       isMounted = false;
+      clearInterval(timer);
     };
-  }, []);
+  }, [eventId]);
 
   // Evidence Drawer handlers
   const handleOpenEvidence = useCallback((target: EvidenceInspectionTarget) => {
@@ -97,21 +115,22 @@ export default function App() {
   // Session Switcher handler
   const handleSelectEvent = useCallback(
     async (newEventId: string) => {
+      setSessionSwitcherOpen(false);
       setIsSessionLoading(true);
       setActiveEventId(newEventId);
-      sendCommand({ action: 'set_event', event_id: newEventId });
-
       try {
-        const geo = await KyntraApiClient.getTrackGeometry(newEventId);
+        const [_, geo] = await Promise.all([
+          KyntraApiClient.sendRuntimeControl({ action: 'set_event', event_id: newEventId }),
+          KyntraApiClient.getTrackGeometry(newEventId),
+        ]);
         if (geo) setTrackGeometry(geo);
       } catch (err) {
         console.error('Session switch assets failed:', err);
       } finally {
         setIsSessionLoading(false);
-        setSessionSwitcherOpen(false);
       }
     },
-    [sendCommand]
+    []
   );
 
   // Global Keyboard Shortcuts
@@ -122,15 +141,15 @@ export default function App() {
         target &&
         (target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
+          target.isContentEditable || (e.key !== 'Escape' && Boolean(target.closest('button, select, summary, [role="button"]'))))
       ) {
         return;
       }
 
       if (e.code === 'Space') {
         e.preventDefault();
-        sendCommand({ action: 'pause' });
-      } else if (e.code === 'ArrowRight') {
+        if (operatingMode === 'REPLAY') sendCommand({ action: runtimeSnapshot?.is_paused ? 'resume' : 'pause' });
+      } else if (e.code === 'ArrowRight' && !judgeModeActive && operatingMode === 'REPLAY') {
         e.preventDefault();
         sendCommand({ action: 'step' });
       } else if (e.code === 'Escape') {
@@ -172,12 +191,12 @@ export default function App() {
             provenance: 'FROZEN MODEL',
             method: '7-Point Atomic Final Publication Gate V1',
             version: 'overtake_p123_v1.lgb',
-            timestamp: new Date().toISOString(),
+            timestamp: decision.decision_time || undefined,
             evidenceItems: [
               { label: 'Snapshot ID', value: decision.decision_id || 'N/A' },
-              { label: 'Lap', value: String(decision.race?.lap || 1) },
+              { label: 'Lap', value: String(decision.race?.lap ?? 'UNKNOWN') },
               { label: 'Primary Basis', value: pub?.primary_reason || rec?.reason || 'Lexicographic Action Ranker' },
-              { label: 'Robustness', value: pub?.robustness || (rec?.robust ? 'ROBUST' : 'SENSITIVE') || 'UNKNOWN' },
+              { label: 'Robustness', value: pub?.robustness || (rec?.robust === true ? 'ROBUST' : rec?.robust === false ? 'SENSITIVE' : 'UNKNOWN') },
             ],
             reasonCodes: pub?.reason_codes || [],
             rawObject: decision as any,
@@ -198,6 +217,8 @@ export default function App() {
     judgeModeActive,
     sendCommand,
     decision,
+    operatingMode,
+    runtimeSnapshot?.is_paused,
   ]);
 
   return (
@@ -223,19 +244,20 @@ export default function App() {
       onToggleCopilot={() => setCopilotActive((prev) => !prev)}
       onSendCommand={sendCommand}
     >
+      {operatingMode === 'FORECAST' && <div className="astra-mode-notice"><b>FORECAST</b> Comparing futures from the retained observed DecisionSnapshot · no future telemetry generated</div>}
       {/* Dynamic Viewport Content */}
-      {currentContext === 'RACE' ? (
+      {liveDisconnected ? <div className="astra-empty astra-live-disconnected"><span className="astra-eyebrow">LIVE / PROVIDER STATUS</span><h1>LIVE PROVIDER NOT CONNECTED</h1><p>Connect an authorized live provider to receive current race state.</p><p>Historical replay is available from the mode selector.</p></div> : currentContext === 'RACE' ? (
         <RaceWorkspace
           runtimeSnapshot={runtimeSnapshot}
           decision={decision}
           cars={raceState?.cars || {}}
-          geometry={trackGeometry}
+          geometry={trackGeometry?.event_id === raceState?.session.event_id ? trackGeometry : null}
           watchlist={watchlist}
           activeBattles={activeBattles}
           selectedBattleId={selectedBattleId}
-          decisionHistory={decisionHistory}
-          trackStatus={raceState?.track.track_status || '1'}
-          circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || 'Monza'}
+          decisionHistory={observedHistory}
+          trackStatus={raceState?.track.track_status || 'UNKNOWN'}
+          circuitName={trackGeometry?.circuit_name || raceState?.session.event_name || 'Awaiting session'}
           isStale={isStale}
           connectionStatus={connectionStatus}
           onSelectBattle={selectBattle}
@@ -256,6 +278,7 @@ export default function App() {
           runtimeSnapshot={runtimeSnapshot}
           decision={decision}
           decisionHistory={decisionHistory}
+          observedHistory={observedHistory}
           selectedBattleId={selectedBattleId}
           operatingMode={operatingMode}
           onJumpToLap={(lap) => sendCommand({ action: 'seek', lap })}
@@ -263,6 +286,8 @@ export default function App() {
         />
       ) : currentContext === 'ANALYSIS' ? (
         <AnalysisWorkspace
+          previousDecision={previousDecision}
+          judgeFocus={judgeFocus}
           decision={decision}
           selectedBattleId={selectedBattleId}
           watchlist={watchlist}
@@ -381,6 +406,8 @@ export default function App() {
 
       {/* Structured KYNTRA Copilot */}
       <StructuredCopilot
+        previousDecision={previousDecision}
+        operatingMode={operatingMode}
         isOpen={copilotActive}
         onClose={() => setCopilotActive(false)}
         decision={decision}

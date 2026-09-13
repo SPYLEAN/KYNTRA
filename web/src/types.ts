@@ -15,6 +15,7 @@ export interface RaceStateSnapshot {
 }
 
 export interface ProvenanceSnapshot {
+  source_mode?: string;
   telemetry_source: string;
   energy_source: string;
   regulation_config_version: string | null;
@@ -95,6 +96,7 @@ export interface RecommendationSnapshot {
 }
 
 export interface DecisionSnapshot {
+  decision_time?: string;
   race: RaceStateSnapshot;
   provenance: ProvenanceSnapshot;
   battle: BattleStateSnapshot;

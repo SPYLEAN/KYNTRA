@@ -23,7 +23,7 @@ export const KyntraCallPanel: React.FC<KyntraCallPanelProps> = ({
   // Strategic Headline & Metadata
   let headlineCall = 'NO DOMINANT STRATEGY';
   let backendAction = 'NONE';
-  let primaryBasis = publishedCall?.primary_reason || 'Evaluating pit-wall strategy options.';
+  let primaryBasis = publishedCall?.primary_reason || 'Awaiting published strategy evidence.';
 
   if (isValid && publishedCall) {
     headlineCall = publishedCall.ui_call;
@@ -36,7 +36,7 @@ export const KyntraCallPanel: React.FC<KyntraCallPanelProps> = ({
   } else if (lifecycle === 'WITHHELD') {
     headlineCall = 'CALL WITHHELD';
     backendAction = publishedCall?.backend_action || 'WITHHELD';
-    primaryBasis = publishedCall?.primary_reason || 'Gate withheld recommendation due to safety or rule bounds.';
+    primaryBasis = publishedCall?.primary_reason || 'No actionable call published for the current state.';
   } else if (lifecycle === 'BLOCKED') {
     headlineCall = 'CALL BLOCKED';
     backendAction = publishedCall?.backend_action || 'BLOCKED';
@@ -52,10 +52,13 @@ export const KyntraCallPanel: React.FC<KyntraCallPanelProps> = ({
   }
 
   const decId = publishedCall?.decision_snapshot_id || decisionSnapshotId || 'FORENSIC_STANDBY';
-  const robustness = publishedCall?.robustness || 'ROBUST WITHIN TESTED ASSUMPTIONS';
+  const robustness = publishedCall?.robustness || 'UNKNOWN';
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
       className={`kyntra-call-card-redesign lifecycle-state-${lifecycle.toLowerCase()} clickable`}
       onClick={() =>
         onOpenEvidence({
@@ -86,8 +89,8 @@ export const KyntraCallPanel: React.FC<KyntraCallPanelProps> = ({
       {/* 1. Header: Conclusion Identifier + Lifecycle Badge */}
       <div className="call-card-header">
         <div className="call-header-left">
-          <span className="call-section-title font-bold">04. KYNTRA CALL</span>
-          <span className="call-provenance-tag text-muted">FINAL PUBLICATION GATE</span>
+          <span className="call-section-title font-bold">KYNTRA CALL</span>
+          <span className="call-provenance-tag text-muted">PUBLISHED DECISION</span>
         </div>
         <LifecycleBadge state={lifecycle} />
       </div>

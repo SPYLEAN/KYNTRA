@@ -1,150 +1,19 @@
-import React, { useState } from 'react';
-import type {
-  DecisionSnapshot,
-  EvidenceInspectionTarget,
-  KyntraRuntimeSnapshot,
-  OperatingMode,
-  RaceEvent,
-} from '../../types';
-import { DecisionTimeline } from '../events/DecisionTimeline';
+import { useState } from 'react';
+import type { DecisionSnapshot, EvidenceInspectionTarget, KyntraRuntimeSnapshot, OperatingMode, RaceEvent } from '../../types';
 import { DecisionDiffPanel } from '../events/DecisionDiffPanel';
-import { BattleMemoryPanel } from '../events/BattleMemoryPanel';
-
-interface EventsWorkspaceProps {
-  events: RaceEvent[];
-  runtimeSnapshot?: KyntraRuntimeSnapshot | null;
-  decision?: DecisionSnapshot | null;
-  decisionHistory?: DecisionSnapshot[];
-  selectedBattleId?: string | null;
-  operatingMode?: OperatingMode;
-  onJumpToLap: (lap: number) => void;
-  onOpenEvidence?: (target: EvidenceInspectionTarget) => void;
+import { sameBattle, publishedLabel, metric } from '../../domain/presentation';
+interface Props { events:RaceEvent[]; runtimeSnapshot?:KyntraRuntimeSnapshot|null; decision?:DecisionSnapshot|null; decisionHistory?:any[]; observedHistory?:DecisionSnapshot[]; selectedBattleId?:string|null; operatingMode?:OperatingMode; onJumpToLap:(lap:number)=>void; onOpenEvidence?:(target:EvidenceInspectionTarget)=>void }
+export function EventsWorkspace({events,decision=null,decisionHistory=[],observedHistory=[],operatingMode='REPLAY',onJumpToLap,onOpenEvidence=()=>{}}:Props) {
+  const [selectedId,setSelectedId]=useState<string|null>(null);
+  const recorded = decisionHistory.filter(d=>d.race && d.battle && sameBattle(d,decision));
+  const history = observedHistory.filter(d=>sameBattle(d,decision));
+  const index = Math.max(0,history.findIndex(d=>d.decision_id===selectedId));
+  const selected = history[index] || decision;
+  const previous = history[index+1] || null;
+  return <div className="astra-workspace astra-events"><div className="astra-section-heading"><div><span className="astra-eyebrow">03 / DECISION MEMORY</span><h2>Every call has a before and an after.</h2><p>Inspect observed decisions, their transitions, and the evidence available at that moment.</p></div><span className="astra-seal">{recorded.length} MATCHING STORE RECORDS<small>{history.length} captured in session memory</small></span></div>
+    <div className="astra-memory-timeline">{history.length ? history.slice(0,20).map((d,i)=><button className={index===i?'active':''} key={d.decision_id || i} onClick={()=>setSelectedId(d.decision_id || null)}><small>LAP {d.race.lap ?? '—'}</small><b>{publishedLabel(d)}</b><span>{metric(d.battle.gap_seconds,'s')}</span></button>):<p className="astra-notice">UNRECORDED — waiting for observed decision snapshots.</p>}</div>
+    <div className="astra-memory-grid"><section className="astra-memory-context"><span className="astra-eyebrow">SELECTED MOMENT</span><h2><span className="text-threat">{selected?.race.attacker || '—'}</span> → <span className="text-target">{selected?.race.defender || '—'}</span></h2><p>Lap {selected?.race.lap ?? '—'} · {selected?.race.event_id || 'UNKNOWN'}</p><p className="astra-caption">{selected?.decision_id || 'NO SNAPSHOT'}</p><button className="astra-button" disabled={operatingMode!=='REPLAY' || selected?.race.lap == null} onClick={()=>selected?.race.lap != null && onJumpToLap(selected.race.lap)}>Seek to this lap ↗</button><div className="astra-notice"><b>HISTORICAL OUTCOME</b><small>KNOWN AFTER THIS MOMENT</small><p>No verified outcome attached. Passing, retention, and future race results remain UNKNOWN.</p></div></section><DecisionDiffPanel currentSnapshot={selected} previousSnapshot={previous} onOpenEvidence={onOpenEvidence}/></div>
+    <details className="astra-details"><summary>Runtime event log · {events.length} received</summary><div className="astra-table-wrap"><table className="astra-table"><thead><tr><th>Lap</th><th>Event</th><th>Cars</th><th>Source</th><th>Evidence</th></tr></thead><tbody>{events.map(ev=><tr key={ev.event_id}><td>{ev.lap ?? '—'}</td><td>{ev.event_type}</td><td>{ev.cars.join(' / ')}</td><td>{ev.provenance || ev.source}</td><td><button className="astra-button" onClick={()=>onOpenEvidence({title:ev.event_type,value:ev.event_id,status:'INFO',provenance:'DERIVED',rawObject:ev})}>Inspect</button></td></tr>)}</tbody></table></div></details>
+  </div>;
 }
 
-export const EventsWorkspace: React.FC<EventsWorkspaceProps> = ({
-  events,
-  runtimeSnapshot,
-  decision = null,
-  decisionHistory = [],
-  selectedBattleId = null,
-  operatingMode: _operatingMode = 'REPLAY',
-  onJumpToLap,
-  onOpenEvidence = () => {},
-}) => {
-  const currentLap = runtimeSnapshot?.current_lap ?? decision?.race?.lap ?? 15;
-  const totalLaps = 53;
-
-  // Track the selected moment for comparative Diff inspection
-  const [selectedLap, setSelectedLap] = useState<number>(currentLap);
-  const [showEventLog, setShowEventLog] = useState<boolean>(false);
-
-  // Derive previous snapshot for Diff calculation
-  const currentSnap = decision;
-  const prevSnap = React.useMemo(() => {
-    if (!decisionHistory || decisionHistory.length < 2) return null;
-    // Find previous lap in history
-    const match = decisionHistory.find((d: any) => d.race?.lap === selectedLap - 1);
-    return match || decisionHistory[1] || null;
-  }, [decisionHistory, selectedLap]);
-
-  return (
-    <div className="workspace-events-executive-container" aria-label="Events Temporal Workspace">
-      {/* 1. HERO: Decision Timeline Scrubber & Evolution Strip */}
-      <section className="events-hero-section">
-        <DecisionTimeline
-          currentLap={currentLap}
-          totalLaps={totalLaps}
-          decision={decision}
-          decisionHistory={decisionHistory}
-          events={events}
-          onSeekLap={onJumpToLap}
-          onOpenEvidence={onOpenEvidence}
-          onSelectMoment={(lap) => setSelectedLap(lap)}
-        />
-      </section>
-
-      {/* 2. MAIN BIFURCATED FORENSIC SUITE: Battle Memory + Decision Diff */}
-      <section className="events-forensic-split-grid">
-        {/* Left: Continuous Tactical Battle Memory */}
-        <div className="split-grid-col col-battle-memory">
-          <BattleMemoryPanel
-            decision={decision}
-            decisionHistory={decisionHistory}
-            selectedBattleId={selectedBattleId}
-            onOpenEvidence={onOpenEvidence}
-            onSeekLap={onJumpToLap}
-          />
-        </div>
-
-        {/* Right: Decision Diff ("WHAT CHANGED?") */}
-        <div className="split-grid-col col-decision-diff">
-          <DecisionDiffPanel
-            currentSnapshot={currentSnap}
-            previousSnapshot={prevSnap}
-            onOpenEvidence={onOpenEvidence}
-          />
-        </div>
-      </section>
-
-      {/* 3. Collapsible Supporting Runtime Events Bar */}
-      <footer className="events-supporting-strip">
-        <button
-          type="button"
-          className="btn-toggle-raw-events mono"
-          onClick={() => setShowEventLog((prev) => !prev)}
-        >
-          {showEventLog ? '▼ HIDE DISCRETE RUNTIME EVENT LOG' : '▶ SHOW DISCRETE RUNTIME EVENT LOG'} ({events.length} RECORDED)
-        </button>
-
-        {showEventLog && (
-          <div className="discrete-events-table-container table-bounded-scroll">
-            <table className="discrete-events-table mono">
-              <thead>
-                <tr>
-                  <th>TIME</th>
-                  <th>LAP</th>
-                  <th>TYPE</th>
-                  <th>CARS</th>
-                  <th>DETAILS</th>
-                  <th>ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.slice(0, 20).map((ev) => (
-                  <tr key={ev.event_id}>
-                    <td>{ev.timestamp.toFixed(1)}s</td>
-                    <td>L{ev.lap ?? '—'}</td>
-                    <td>
-                      <span className={`ev-pill pill-${ev.event_type.toLowerCase()}`}>
-                        {ev.event_type}
-                      </span>
-                    </td>
-                    <td className="font-bold">{ev.cars.join(' & ') || '—'}</td>
-                    <td className="text-muted">
-                      {ev.derived_data && Object.keys(ev.derived_data).length > 0
-                        ? Object.entries(ev.derived_data)
-                            .map(([k, v]) => `${k}: ${v}`)
-                            .join(' | ')
-                        : ev.source}
-                    </td>
-                    <td>
-                      {ev.lap && (
-                        <button
-                          type="button"
-                          className="btn-seek-sm"
-                          onClick={() => onJumpToLap(ev.lap!)}
-                        >
-                          SEEK
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </footer>
-    </div>
-  );
-};

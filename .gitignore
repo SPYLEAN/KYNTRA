@@ -87,3 +87,7 @@ logs/
 
 # Reference repositories (Phase 01.6)
 _reference/
+
+# Local scratch and profiling scripts
+scratch/
+profile_*.py

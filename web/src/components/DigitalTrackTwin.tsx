@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { CarState, TrackGeometry } from '../types';
+import { TrackOverlayModal } from './TrackOverlayModal';
 
 interface Props {
   geometry: TrackGeometry | null;
@@ -14,6 +15,7 @@ interface Props {
   spatialGapMeters?: number | null;
 }
 
+
 export function DigitalTrackTwin({
   geometry,
   cars,
@@ -22,9 +24,11 @@ export function DigitalTrackTwin({
   gapSeconds,
   closingRate,
   trackStatus,
+  circuitName,
   onSelectCar,
 }: Props) {
-  const [focus, setFocus] = useState(false);
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [overlayMode, setOverlayMode] = useState<'CIRCUIT' | 'BATTLE'>('CIRCUIT');
   const [layers, setLayers] = useState({ cars: true, battle: true, sectors: false, labels: true, field: true });
   const [more, setMore] = useState(false);
 
@@ -52,23 +56,23 @@ export function DigitalTrackTwin({
   const attacker = tokens.find((t) => t.car.driver === attackerCode);
   const defender = tokens.find((t) => t.car.driver === defenderCode);
 
+  // High-contrast, tight bounds so the track is 40-50% larger and clearly visible
   const allBounds = useMemo(() => {
     if (!points.length) return { x: 0, y: 0, w: 1000, h: 600 };
     const xs = points.map((p) => p.x), ys = points.map((p) => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const pad = 24; // Tight padding for maximized visibility
     return {
-      x: Math.min(...xs) - 65,
-      y: Math.min(...ys) - 65,
-      w: Math.max(...xs) - Math.min(...xs) + 130,
-      h: Math.max(...ys) - Math.min(...ys) + 130,
+      x: minX - pad,
+      y: minY - pad,
+      w: maxX - minX + pad * 2,
+      h: maxY - minY + pad * 2,
     };
   }, [points]);
 
-  let bounds = allBounds;
-  if (focus && attacker?.point && defender?.point) {
-    const a = attacker.point, d = defender.point;
-    const w = Math.max(270, Math.abs(a.x - d.x) + 190), h = Math.max(210, Math.abs(a.y - d.y) + 160);
-    bounds = { x: (a.x + d.x - w) / 2, y: (a.y + d.y - h) / 2, w, h };
-  }
+  // Rock-solid stable bounds: zero camera jitter during live playback
+  const bounds = allBounds;
 
   const selected = tokens.filter((t) => [attackerCode, defenderCode].includes(t.car.driver));
   const rest = tokens.filter((t) => ![attackerCode, defenderCode].includes(t.car.driver));
@@ -101,7 +105,7 @@ export function DigitalTrackTwin({
     <div className="astra-twin">
       <div className="astra-twin-toolbar">
         <span className="astra-eyebrow">
-          {tokens.length} POSITIONED / {Object.keys(cars).length} FIELD
+          {circuitName ? `${circuitName.toUpperCase()} · ` : ''}{tokens.length} POSITIONED / {Object.keys(cars).length} FIELD
         </span>
         <button
           className="astra-button"
@@ -113,11 +117,25 @@ export function DigitalTrackTwin({
         </button>
         <button
           className="astra-button"
-          aria-pressed={focus}
           disabled={!attacker || !defender}
-          onClick={() => setFocus(!focus)}
+          onClick={() => {
+            setOverlayMode('BATTLE');
+            setIsOverlayOpen(true);
+          }}
+          title="Open clear, glitch-free focused battle overlay screen"
         >
-          {focus ? '↗ Field overview' : '⌖ Focus battle'}
+          ⌖ Focus battle
+        </button>
+        <button
+          className="astra-button astra-button-overlay"
+          onClick={() => {
+            setOverlayMode('CIRCUIT');
+            setIsOverlayOpen(true);
+          }}
+          title="Open high-definition full-screen map overlay"
+          style={{ borderColor: '#38bdf8', color: '#38bdf8', fontWeight: 700 }}
+        >
+          ⛶ Overlay screen
         </button>
         <div className="astra-layers" aria-label="Track layers">
           <span>LAYERS</span>
@@ -373,6 +391,22 @@ export function DigitalTrackTwin({
         Engineering view · progress mapped to verified source geometry
         {layers.sectors ? ' · sector markers are approximate thirds, not surveyed timing lines' : ''}
       </p>
+
+      {/* Clear High-Definition Track & Battle Overlay Screen */}
+      <TrackOverlayModal
+        isOpen={isOverlayOpen}
+        onClose={() => setIsOverlayOpen(false)}
+        initialMode={overlayMode}
+        geometry={geometry}
+        cars={cars}
+        attackerCode={attackerCode}
+        defenderCode={defenderCode}
+        gapSeconds={gapSeconds}
+        closingRate={closingRate}
+        trackStatus={trackStatus}
+        circuitName={circuitName}
+        onSelectCar={onSelectCar}
+      />
     </div>
   );
 }

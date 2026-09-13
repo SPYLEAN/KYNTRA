@@ -48,6 +48,7 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
           type="button"
           className={`btn-replay-action btn-play ${isPaused ? 'is-paused' : 'is-playing'}`}
           onClick={onPlayPause}
+          disabled={!totalLaps}
           title={isPaused ? 'Play Replay (SPACE)' : 'Pause Replay (SPACE)'}
         >
           {isPaused ? '▶ PLAY' : '❚❚ PAUSE'}
@@ -58,7 +59,7 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
           className="btn-replay-action btn-step"
           onClick={onStepBack}
           title="Step 1 Lap Back"
-          disabled={currentLap <= 1}
+          disabled={currentLap <= 1 || !totalLaps}
         >
           ⏮ BACK
         </button>
@@ -82,6 +83,7 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
               type="button"
               className={`speed-btn ${playbackSpeed === s ? 'active' : ''}`}
               onClick={() => onSpeedChange(s)}
+              disabled={!totalLaps}
             >
               {s}x
             </button>
@@ -94,9 +96,11 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
         <div className="scrubber-track-wrapper">
           <input
             type="range"
+            aria-label="Replay lap"
+            disabled={!totalLaps}
             min={1}
-            max={totalLaps}
-            value={currentLap}
+            max={Math.max(1,totalLaps)}
+            value={Math.max(1,currentLap)}
             onChange={(e) => onSeekLap(parseInt(e.target.value, 10))}
             className="replay-slider"
             title={`Scrub replay: Lap ${currentLap} of ${totalLaps}`}
@@ -120,7 +124,7 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
         </div>
         <div className="hud-metric">
           <span className="h-lbl text-muted">LAP:</span>
-          <span className="h-val font-bold text-primary">{currentLap} / {totalLaps}</span>
+          <span className="h-val font-bold text-primary">{currentLap || '—'} / {totalLaps || '—'}</span>
         </div>
         <div className="hud-metric">
           <span className="h-lbl text-muted">SOURCE TIME:</span>

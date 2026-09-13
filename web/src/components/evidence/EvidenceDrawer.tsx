@@ -257,7 +257,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({ target, onClose 
       {/* 5. Drawer Footer */}
       <div className="drawer-footer">
         <span className="footer-cert mono text-accent">
-          ✓ CERTIFIED DECISION SNAPSHOT
+          SOURCE EVIDENCE · INSPECTABLE RECORD
         </span>
         <span className="footer-esc-tip mono text-muted">
           Press [ESC] to return to pitwall view

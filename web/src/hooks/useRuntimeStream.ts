@@ -95,6 +95,9 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
   const [lastUpdateTimestamp, setLastUpdateTimestamp] = useState<number | null>(null);
   const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLog[]>([]);
 
+  const requestedDecisionId = useRef<string | null>(null);
+  const loadedDecisionId = useRef<string | null>(null);
+
   // Refs for network lifecycle
   const wsRef = useRef<WebSocket | null>(null);
   const backoffRef = useRef<number>(INITIAL_BACKOFF_MS);
@@ -127,13 +130,6 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
 
   // Synchronous command sender via WebSocket with guaranteed REST dispatch
   const sendCommand = useCallback((payload: any) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      try {
-        wsRef.current.send(JSON.stringify(payload));
-      } catch (e) {
-        // ws write failed
-      }
-    }
     KyntraApiClient.sendRuntimeControl(payload).catch(() => {
       // REST dispatch handled
     });
@@ -168,7 +164,7 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
       setIsStale(false);
 
       if (data.race_state) setRaceState(data.race_state);
-      if (data.decision) setDecision(data.decision);
+      // The timing stream carries a legacy decision; publication truth comes from the runtime record.
 
       if (data.watchlist) {
         setWatchlist(data.watchlist);
@@ -199,6 +195,20 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
       setLastUpdateTimestamp(now);
       setIsStale(false);
       setRuntimeSnapshot(snap);
+      const id = snap.decision_snapshot_id || null;
+      requestedDecisionId.current = id;
+      if (!id) {
+        loadedDecisionId.current = null;
+        setDecision(null);
+      } else if (loadedDecisionId.current !== id) {
+        // Clear the old call while resolving this exact immutable snapshot.
+        setDecision(null);
+        void KyntraApiClient.getDecisionSnapshot(id).then((record) => {
+          if (!isMountedRef.current || requestedDecisionId.current !== id) return;
+          loadedDecisionId.current = record ? id : null;
+          setDecision(record);
+        });
+      }
 
       if (responseTimeMs !== undefined) {
         setLatencyMs(responseTimeMs);
@@ -212,10 +222,11 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
         }
       }
 
-      if (snap.active_battles && snap.active_battles.length > 0) {
+      if (snap.active_battles) {
         setActiveBattles(snap.active_battles);
+        if (snap.selected_battle_id !== undefined) setSelectedBattleId(snap.selected_battle_id);
         if (!selectedBattleId) {
-          setSelectedBattleId(snap.selected_battle_id || snap.active_battles[0].battle_id);
+          setSelectedBattleId(snap.selected_battle_id || snap.active_battles[0]?.battle_id || null);
         }
       }
 
@@ -342,9 +353,13 @@ export function useRuntimeStream(_initialEventId: string = '2026_13_ITA'): UseRu
       }
     }, 1000);
 
-    // 4. Background HTTP Sync Poller (ensures strategy matrix & ranking are fresh)
+    // 4. Background HTTP Sync Poller (fallback when WebSocket stream is disconnected or reconnecting)
     pollTimerRef.current = setInterval(async () => {
       if (!isMountedRef.current) return;
+      // Skip redundant HTTP poll if WebSocket is active and streaming
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        return;
+      }
       const t0 = performance.now();
       const snap = await KyntraApiClient.getRuntimeSnapshot();
       const t1 = performance.now();

@@ -72,10 +72,10 @@ export const AppShell: React.FC<AppShellProps> = ({
          raceState?.session.provider ||
          (operatingMode === 'LIVE' ? 'OPENF1_LIVE' : 'OPENF1'));
   const systemHealth: SystemHealthStatus =
-    runtimeSnapshot?.health.system_health || 'OPERATIONAL';
+    runtimeSnapshot?.health.system_health || 'OFFLINE';
 
-  const currentLap = runtimeSnapshot?.current_lap ?? raceState?.session.current_lap ?? 15;
-  const totalLaps = raceState?.session.total_laps ?? 53;
+  const currentLap = runtimeSnapshot?.current_lap ?? raceState?.session.current_lap ?? 0;
+  const totalLaps = raceState?.session.total_laps ?? 0;
 
   return (
     <div className="kyntra-workstation-shell">
@@ -120,7 +120,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             <ReplayControlBar
               currentLap={currentLap}
               totalLaps={totalLaps}
-              sessionTime={runtimeSnapshot?.source_time_s ?? (raceState?.session as any)?.elapsed_time ?? (currentLap * 82.5)}
+              sessionTime={runtimeSnapshot?.source_time_s ?? raceState?.session.replay_time ?? null}
               isPaused={runtimeSnapshot?.is_paused ?? false}
               playbackSpeed={runtimeSnapshot?.playback_rate ?? 1.0}
               eventId={runtimeSnapshot?.event_id || raceState?.session.event_id || '2026_13_ITA'}

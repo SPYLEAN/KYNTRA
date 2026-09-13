@@ -62,8 +62,9 @@ class LiveRaceService:
 
         self._subscribers: List[Callable[[Dict[str, Any]], Any]] = []
         self._is_running = False
+        self._stop_event = threading.Event()
         self._worker_thread: Optional[threading.Thread] = None
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         # State transition tracking for event deduplication
         self._last_lap: Optional[int] = None
@@ -90,6 +91,7 @@ class LiveRaceService:
             return
         self.provider.start()
         self._is_running = True
+        self._stop_event.clear()
         self._worker_thread = threading.Thread(target=self._run_loop, daemon=True)
         self._worker_thread.start()
 
@@ -119,9 +121,16 @@ class LiveRaceService:
         self.event_store.append_event(init_event)
 
     def stop(self) -> None:
-        """Stop provider and worker."""
+        """Stop provider and worker cleanly and instantaneously."""
         self._is_running = False
+        self._stop_event.set()
         self.provider.stop()
+        if self._worker_thread and self._worker_thread.is_alive():
+            try:
+                self._worker_thread.join(timeout=0.5)
+            except Exception:
+                pass
+            self._worker_thread = None
 
     def seek(self, lap: int) -> bool:
         """Seek provider to a given lap and reset transition state trackers."""
@@ -137,7 +146,7 @@ class LiveRaceService:
         return False
 
     def set_event(self, event_id: str) -> None:
-        """Switch active event provider."""
+        """Switch active event provider cleanly without leaking worker threads."""
         self.stop()
         self.event_id = event_id
         self.provider = ReplayProvider(event_id=event_id)
@@ -149,7 +158,6 @@ class LiveRaceService:
         self._last_active_battle_ids.clear()
         self._last_window_states.clear()
         self.start()
-        self.step()
 
     def select_provider(
         self,
@@ -224,20 +232,22 @@ class LiveRaceService:
 
     def step(self) -> Optional[Dict[str, Any]]:
         """Advance one tick synchronously, process intelligence, and return payload."""
-        race_state = self.provider.next_state()
-        if race_state is None:
-            return None
+        with self._lock:
+            race_state = self.provider.next_state()
+            if race_state is None:
+                return None
 
-        payload = self._process_state(race_state)
-        self._broadcast(payload)
-        return payload
+            payload = self._process_state(race_state)
+            self._broadcast(payload)
+            return payload
 
     def _run_loop(self) -> None:
-        """Continuous background tick loop."""
+        """Continuous background tick loop with responsive interruption."""
         last_t = None
-        while self._is_running:
+        while not self._stop_event.is_set():
             if getattr(self.provider, "_is_paused", False):
-                time.sleep(0.1)
+                if self._stop_event.wait(timeout=0.1):
+                    break
                 continue
             try:
                 payload = self.step()
@@ -251,9 +261,11 @@ class LiveRaceService:
                 last_t = curr_t
                 speed = getattr(self.provider, "_playback_speed", 1.0)
                 interval = max(0.05, min(5.0, dt / max(0.1, speed)))
-                time.sleep(interval)
+                if self._stop_event.wait(timeout=interval):
+                    break
             except Exception:
-                time.sleep(0.5)
+                if self._stop_event.wait(timeout=0.5):
+                    break
 
     def _process_state(self, race_state: RaceState) -> Dict[str, Any]:
         """Core intelligence pipeline on newly ingested RaceState."""
@@ -265,13 +277,16 @@ class LiveRaceService:
         # 1. Automated Battle Detection
         battles = self.detector.detect_battles(race_state)
 
-        # 2. Frozen ML Inference & Window Engine update for all active battles
+        # 2. Vectorized ML Inference & Window Engine update for active battles
         model = get_overtake_model()
         window_summary: Dict[str, str] = {}
-        battle_decisions: Dict[str, DecisionSnapshot] = {}
 
-        for b_id, b in battles.items():
-            # Truth Gate: Extract exact features without fabricating defaults
+        # Collect features across all active battles for vectorized inference
+        battle_items = list(battles.items())
+        infer_rows: List[Dict[str, Any]] = []
+        infer_indices: List[int] = []
+
+        for idx, (b_id, b) in enumerate(battle_items):
             gap_val = b.gap_seconds
             closing_rate_val = b.closing_rate
             pace_1lap_val = b.relative_pace
@@ -286,17 +301,27 @@ class LiveRaceService:
                 "speed_trap_delta": speed_trap_val,
             }
 
-            p1, p2, p3 = None, None, None
-            # Only infer if all 5 features are valid numbers; do not generate substitutes
-            missing_feats = [k for k, v in feats.items() if v is None]
-            if not missing_feats:
-                try:
-                    pred = model.predict_one(feats)
-                    p1 = pred.p_pass_1_lap
-                    p2 = pred.p_pass_2_laps
-                    p3 = pred.p_pass_3_laps
-                except Exception:
-                    pass
+            if not any(v is None for v in feats.values()):
+                infer_rows.append(feats)
+                infer_indices.append(idx)
+
+        # Vectorized batch prediction (1 call instead of N separate calls)
+        preds_by_idx: Dict[int, Any] = {}
+        if infer_rows:
+            try:
+                import pandas as pd
+                batch_df = pd.DataFrame(infer_rows)
+                batch_preds = model.predict_batch(batch_df)
+                for idx, pred in zip(infer_indices, batch_preds):
+                    preds_by_idx[idx] = pred
+            except Exception:
+                pass
+
+        for idx, (b_id, b) in enumerate(battle_items):
+            pred = preds_by_idx.get(idx)
+            p1 = pred.p_pass_1_lap if pred else None
+            p2 = pred.p_pass_2_laps if pred else None
+            p3 = pred.p_pass_3_laps if pred else None
 
             # Update rolling window
             win_state = self.window_engine.update_battle_probability(
@@ -305,47 +330,11 @@ class LiveRaceService:
                 p1=p1,
                 p2=p2,
                 p3=p3,
-                gap=gap_val if gap_val is not None else 0.0,
-                closing_rate=closing_rate_val if closing_rate_val is not None else 0.0,
+                gap=b.gap_seconds if b.gap_seconds is not None else 0.0,
+                closing_rate=b.closing_rate if b.closing_rate is not None else 0.0,
             )
             self.state_store.update_window(b_id, win_state)
             window_summary[b_id] = win_state.window_state
-
-            # Compute coherent DecisionSnapshot for battle
-            att_pos = b.attacker_position or 2
-            def_pos = b.defender_position or 1
-            race_data = {
-                "event_id": self.event_id,
-                "event_name": race_state.session.event_name,
-                "lap": current_lap,
-                "replay_time": t_stamp,
-                "attacker": b.attacker,
-                "defender": b.defender,
-                "attacker_position": att_pos,
-                "defender_position": def_pos,
-                "track_status": race_state.track.track_status,
-            }
-            battle_data = {
-                "gap_seconds": b.gap_seconds,
-                "distance_gap_m": round(b.gap_seconds * 65.0, 1) if b.gap_seconds is not None else None,
-                "closing_rate": b.closing_rate,
-                "recent_pace_delta_1lap": pace_1lap_val,
-                "recent_pace_delta_3laps": pace_3laps_val,
-                "speed_trap_delta": speed_trap_val,
-                "speed_delta": b.speed_delta,
-                "tyre_age_delta": b.tyre_context.get("tyre_age_delta"),
-                "laps_following": min(current_lap, 10),
-                "rear_threat": b.traffic_context.get("rear_threat", "LOW"),
-            }
-            energy_sim = {
-                "available_energy_mj": round(max(0.6, 3.5 - ((current_lap % 6) * 0.4)), 2),
-                "scenario": "RACE_DYNAMIC",
-            }
-            battle_decisions[b_id] = compute_decision(
-                race_data=race_data,
-                battle_data=battle_data,
-                simulated_energy_state=energy_sim,
-            )
 
         # 3. Build Watchlist
         watchlist = self.watchlist_engine.build_watchlist(
@@ -357,12 +346,51 @@ class LiveRaceService:
 
         # Determine primary selected battle
         sel_id = self.state_store.get_selected_battle_id()
-        if not sel_id or sel_id not in battle_decisions:
+        if not sel_id or sel_id not in battles:
             sel_id = watchlist[0].battle_id if watchlist else None
 
         primary_decision = None
-        if sel_id and sel_id in battle_decisions:
-            primary_decision = battle_decisions[sel_id]
+        if sel_id and sel_id in battles:
+            # High-performance: compute full 5-pillar decision ONLY for the primary selected battle
+            sel_b = battles[sel_id]
+            att_pos = sel_b.attacker_position or 2
+            def_pos = sel_b.defender_position or 1
+            pace_1lap_val = sel_b.relative_pace
+            pace_3laps_val = round(pace_1lap_val * 0.9, 2) if pace_1lap_val is not None else None
+            speed_trap_val = sel_b.speed_delta
+
+            race_data = {
+                "event_id": self.event_id,
+                "event_name": race_state.session.event_name,
+                "lap": current_lap,
+                "replay_time": t_stamp,
+                "attacker": sel_b.attacker,
+                "defender": sel_b.defender,
+                "attacker_position": att_pos,
+                "defender_position": def_pos,
+                "track_status": race_state.track.track_status,
+            }
+            battle_data = {
+                "gap_seconds": sel_b.gap_seconds,
+                "distance_gap_m": round(sel_b.gap_seconds * 65.0, 1) if sel_b.gap_seconds is not None else None,
+                "closing_rate": sel_b.closing_rate,
+                "recent_pace_delta_1lap": pace_1lap_val,
+                "recent_pace_delta_3laps": pace_3laps_val,
+                "speed_trap_delta": speed_trap_val,
+                "speed_delta": sel_b.speed_delta,
+                "tyre_age_delta": sel_b.tyre_context.get("tyre_age_delta"),
+                "laps_following": min(current_lap, 10),
+                "rear_threat": sel_b.traffic_context.get("rear_threat", "LOW"),
+            }
+            energy_sim = {
+                "available_energy_mj": round(max(0.6, 3.5 - ((current_lap % 6) * 0.4)), 2),
+                "scenario": "RACE_DYNAMIC",
+            }
+            primary_decision = compute_decision(
+                race_data=race_data,
+                battle_data=battle_data,
+                simulated_energy_state=energy_sim,
+            )
             self.state_store.update_decision_snapshot(primary_decision)
         elif not watchlist:
             # Field has no close battles; fallback decision

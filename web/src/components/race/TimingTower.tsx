@@ -46,7 +46,7 @@ export const TimingTower: React.FC<TimingTowerProps> = ({
                 </td>
               </tr>
             ) : (
-              sortedCars.map((car, idx) => {
+              sortedCars.map((car) => {
                 const isAttacker = car.driver === attackerCode;
                 const isDefender = car.driver === defenderCode;
                 const isBattleParticipant = isAttacker || isDefender;
@@ -56,14 +56,14 @@ export const TimingTower: React.FC<TimingTowerProps> = ({
                 if (isDefender) rowClass = 'row-defender';
 
                 const interval =
-                  idx === 0
+                  car.position === 1
                     ? 'LEADER'
                     : car.gap_to_car_ahead !== undefined && car.gap_to_car_ahead !== null
                     ? `+${car.gap_to_car_ahead.toFixed(1)}s`
                     : '—';
 
                 const gapLeader =
-                  idx === 0
+                  car.position === 1
                     ? '0.0s'
                     : car.gap_to_leader !== undefined && car.gap_to_leader !== null
                     ? `+${car.gap_to_leader.toFixed(1)}s`
@@ -83,7 +83,7 @@ export const TimingTower: React.FC<TimingTowerProps> = ({
                     }
                   >
                     <td className="col-pos mono-num font-bold">
-                      {car.position ?? idx + 1}
+                      {car.position ?? '—'}
                     </td>
                     <td className="col-driver">
                       <span className="driver-flag-slot">
@@ -104,10 +104,10 @@ export const TimingTower: React.FC<TimingTowerProps> = ({
                       {interval}
                     </td>
                     <td className="col-tyre text-muted">
-                      <span className={`tyre-badge tyre-${(car.tyre_compound || 'M').toLowerCase()}`}>
-                        {(car.tyre_compound || 'M').slice(0, 1)}
+                      <span className={`tyre-badge tyre-${(car.tyre_compound || '?').toLowerCase()}`}>
+                        {(car.tyre_compound || '?').slice(0, 1)}
                       </span>
-                      <span className="tyre-laps mono-num">{car.tyre_age ?? 10}L</span>
+                      <span className="tyre-laps mono-num">{car.tyre_age ?? '—'}L</span>
                     </td>
                   </tr>
                 );

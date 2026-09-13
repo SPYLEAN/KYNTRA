@@ -97,6 +97,7 @@ export const SessionSwitcher: React.FC<SessionSwitcherProps> = ({
                   key={sess.event_id}
                   className={`session-card ${isActive ? 'active-session' : ''} ${isLoading ? 'loading' : ''}`}
                   onClick={() => {
+                    if (isActive && !isLoading) { onClose(); return; }
                     if (!isActive && !isLoading) {
                       onSelectEvent(sess.event_id);
                     }
@@ -105,7 +106,8 @@ export const SessionSwitcher: React.FC<SessionSwitcherProps> = ({
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                      if (!isActive && !isLoading) onSelectEvent(sess.event_id);
+                      e.preventDefault();
+                      if (!isLoading) { if (isActive) onClose(); else onSelectEvent(sess.event_id); }
                     }
                   }}
                 >
