@@ -29,7 +29,7 @@ export const ReplayControlBar: React.FC<ReplayControlBarProps> = ({
   onSeekLap,
   onSpeedChange,
 }) => {
-  const speeds = [0.5, 1.0, 2.0, 4.0];
+  const speeds = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0];
 
   const formatTime = (secs?: number | null) => {
     if (secs == null) return '--:--';

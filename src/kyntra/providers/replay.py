@@ -156,8 +156,14 @@ class ReplayProvider(BaseDataProvider):
             self._substep_idx = 0
 
         current_lap = self._laps[self._current_lap_idx]
-        lap_df = self._df[self._df["lap"] == current_lap]
+        if getattr(self, "_cached_lap", None) != current_lap or getattr(self, "_cached_lap_df", None) is None:
+            self._cached_lap = current_lap
+            self._cached_lap_df = self._df[self._df["lap"] == current_lap]
+            self._cached_driver_dfs = {
+                d: d_df for d, d_df in self._cached_lap_df.groupby("driver")
+            }
 
+        lap_df = self._cached_lap_df
         if lap_df.empty:
             self._current_lap_idx += 1
             return self.next_state()
@@ -167,16 +173,14 @@ class ReplayProvider(BaseDataProvider):
 
         # Reconstruct each car's state
         cars_dict: Dict[str, CarState] = {}
-        driver_ids = lap_df["driver"].dropna().unique().tolist()
 
         # Extract per-car snapshot at current substep
         car_rows = []
-        for d_id in driver_ids:
-            d_str = str(d_id)
-            d_df = lap_df[lap_df["driver"] == d_id]
+        for d_id, d_df in self._cached_driver_dfs.items():
             if d_df.empty:
                 continue
 
+            d_str = str(d_id)
             n_samples = len(d_df)
             sample_idx = min(int(step_fraction * n_samples) - 1, n_samples - 1)
             sample_idx = max(0, sample_idx)

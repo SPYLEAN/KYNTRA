@@ -26,7 +26,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   onStep,
   markers = [],
 }) => {
-  const speeds = [0.5, 1.0, 2.0, 4.0];
+  const speeds = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0];
 
   const formatTime = (seconds?: number | null) => {
     if (seconds === undefined || seconds === null) return '--:--';
